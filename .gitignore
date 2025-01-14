@@ -1,0 +1,4 @@
+.vscode
+MDK-ARM
+Drivers/CMSIS
+Drivers/STM32*

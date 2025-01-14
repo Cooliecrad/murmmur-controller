@@ -1,0 +1,6 @@
+#include "using_PID.h"
+
+PIDTypeDef ANGLE_PID;
+PIDTypeDef ANGLE_PID2;
+PIDTypeDef PID_LOCATION_JUST_X;
+PIDTypeDef PID_LOCATION_JUST_Y;
