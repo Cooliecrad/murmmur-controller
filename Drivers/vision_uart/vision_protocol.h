@@ -20,6 +20,7 @@ typedef enum
     ps_comm_type_color_detect,   // 物体颜色检测
     ps_comm_type_ring_pos_detect,  // 色环中心位置检测
     ps_comm_type_ring_angle_detect,  // 色环角度检测
+    ps_comm_type_select_ring,  // 色环中心位置检测
     ps_comm_type_error = 0xff // 无效类型
 } ps_comm_type_t;
 
@@ -109,7 +110,7 @@ typedef struct
     uint8_t addr;
     int16_t x;
     int16_t y;
-} ps_comm_ring_pos_detect_t;
+} ps_comm_ring_pos_vision_t;
 
 typedef struct
 {
@@ -118,6 +119,12 @@ typedef struct
     int16_t x;
     int16_t y;
 } ps_comm_ring_angle_detect_t;
+
+typedef struct
+{
+    uint8_t addr;
+    uint8_t color;
+} ps_comm_ring_pos_controller_t;
 
 typedef union
 {
@@ -132,8 +139,9 @@ typedef union
     ps_comm_battery_info_t battery;
     ps_comm_scan_qr_t scan_qr;
     ps_comm_color_detect_t item_color;
-    ps_comm_ring_pos_detect_t ring_center;
+    ps_comm_ring_pos_vision_t ring_center;
     ps_comm_ring_angle_detect_t ring_angle;
+    ps_comm_ring_pos_controller_t select_ring;
 } PsCommFrame;
 
 typedef struct

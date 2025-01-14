@@ -4,7 +4,6 @@
 
 const static float VISION_SCALE = 0.001; // 视觉和底盘单位的缩放量
 const static int VISION_POLL_INTERVAL = 10;
-
 PsCommRawFrame VISION_COPY_BUFFER0;
 PsCommRawFrame VISION_COPY_BUFFER1;
 PsCommRawFrame VISION_COPY_BUFFER2;
@@ -63,20 +62,36 @@ void vision_init(UART_HandleTypeDef *pHUART)
     ps_uart_init(&vision_uart);
 }
 
+/**
+ * @brief 发送订阅消息的请求
+ * @param frame 消息帧，不需要填写帧头以及校验和
+ */
+static inline void __vision_subscribe(PsCommRawFrame *frame)
+{
+    frame->frame_start = __PS_COMM_FRAME_START;
+    frame->check_sum = ps_uart_sigma_check_sum((uint8_t*)&frame->frame, sizeof(PsCommFrame));
+    vision_info.instance.updated = ps_comm_type_error;
+    ps_uart_transmit(vision_uart_handle, frame, sizeof(PsCommRawFrame));
+}
+
 void vision_subscribe(ps_comm_type_t type)
 {
     static PsCommRawFrame TX_BUFFER; // 发送数据用的缓冲区
-    TX_BUFFER.frame_start = __PS_COMM_FRAME_START;
     TX_BUFFER.frame.addr = type;
-    TX_BUFFER.check_sum = ps_uart_sigma_check_sum((uint8_t*)&TX_BUFFER.frame,
-                                                  sizeof(PsCommFrame));
-    vision_info.instance.updated = ps_comm_type_error;
-    ps_uart_transmit(vision_uart_handle, &TX_BUFFER, sizeof(PsCommRawFrame));
+    __vision_subscribe(&TX_BUFFER);
 }
 
-void vision_open(ps_comm_type_t type)
+void vision_subscribe_ring(color_t ring)
 {
-    vision_subscribe(type);
+    static PsCommRawFrame TX_BUFFER; // 发送数据用的缓冲区
+    TX_BUFFER.frame.addr = ps_comm_type_select_ring;
+    TX_BUFFER.frame.select_ring.color = ring;
+    __vision_subscribe(&TX_BUFFER);
+}
+
+void vision_sync(ps_comm_type_t type)
+{
+    vision_info.instance.updated = ps_comm_type_error;
     while (vision_info.instance.updated != type) HAL_Delay(VISION_POLL_INTERVAL);
 }
 

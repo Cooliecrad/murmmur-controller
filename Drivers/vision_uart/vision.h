@@ -52,11 +52,17 @@ void vision_init(UART_HandleTypeDef *pHUART);
 void vision_subscribe(ps_comm_type_t type);
 
 /**
- * @brief 向视觉订阅指定主题的信息，并等待该主题信息返回
+ * @brief 向视觉订阅指定色环的信息
+ * @param ring 需要的色环
+ */
+void vision_subscribe_ring(color_t ring);
+
+/**
+ * @brief 等待下位机收到指定类型的数据
  * @param ps_comm_type 请求类型
  * @note 这个函数可以用来保证至少有一帧新数据进入
  */
-void vision_open(ps_comm_type_t type);
+void vision_sync(ps_comm_type_t type);
 
 /**
  * @brief 查询接收到的信息并做出相应的更新，非阻塞

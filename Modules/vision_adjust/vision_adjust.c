@@ -21,7 +21,8 @@ void vision_calibrate_gyro(float target)
 void vision_adjust_chassis(Pose2f *target)
 {
     // 等待获取视觉数据
-    vision_open(ps_comm_type_ring_angle_detect);
+    vision_subscribe(ps_comm_type_ring_angle_detect);
+    vision_sync(ps_comm_type_ring_angle_detect);
     vision_calibrate_gyro(target->angle); // 校准陀螺仪
     // 检测是否可以接受
     while (   fabs(vision_info.ring_pos.x) > VISION_ADJUST_POS_THRESHOLD
@@ -33,7 +34,7 @@ void vision_adjust_chassis(Pose2f *target)
         chassis_arrived();
         chassis_rotate_abs(VISION_ADJUST_ACC, 150, target->angle);
         // 确保没有延迟
-        vision_open(ps_comm_type_ring_angle_detect);
+        vision_sync(ps_comm_type_ring_angle_detect);
 
 #   else
         // 速度模式校准
