@@ -7,15 +7,20 @@
 #include "common.h"
 #include "emm42_v5.h"
 
-extern uint8_t StepMotor_ToStepPacket[13];
-extern uint8_t StepMotor_StopPacket[5];
-extern uint8_t StepMotor_StatePacket[3];
-extern int32_t Motor_TimeCNT[2];
+extern float StepMotor_R_StorePosition[];
+extern float StepMotor_Forward_Store[];
+extern float StepMotor_Z_Position[];
+extern emm42_handle_t arm_emm42_handle;
+
+/**
+ * @brief 采用全功能机械臂解算函数来控制机械臂位置
+ */
+// #define __USING_FULL_FUNCTION_ARM_MOVE
 
 typedef enum
 {
+	Ordinary2 = 0,
     Red2 = 1,
-    Ordinary2 = 0,
     Green2 = 2,
     Blue2 = 3,
     Dtct2 = 4,
@@ -39,27 +44,86 @@ typedef enum
     Ground_To_Store = 5, // 从地面拾取放到存储机构
     Maduo = 6,			 // 码垛
     Store_Open = 7,		 // 存储机构开
-    Store_Close = 8		 // 存储机构关
+    Store_Close = 8,     // 存储机构关
+    Store_Scan,
 } ArmAction;
 
+typedef struct
+{
+    bool inner; // 标志着当前在死区内
+    Point2f upper;
+    Point2f lower; // 死区范围
+    float inner_max; // 死区内最大移动量
+    float outer_max; // 死区外最大移动量
+} arm_deadzone_t;
+
+typedef struct
+{
+    Point2f center; // 旋转中心（Z轴）在视觉坐标系中的位置
+    float claw_distance; // 爪子零点到旋转中心的距离
+    arm_deadzone_t deadzone;
+    stepmotor_t motor_r; // 旋转电机
+    stepmotor_t motor_x; // 前伸电机
+    stepmotor_t motor_z; // 上升电机
+} arm_define_t;
+
+extern arm_define_t *pARM_DEFINE;
+
+typedef struct
+{
+	uint16_t angle;
+	uint16_t forward;
+}Color_Position;
+
+typedef struct
+{
+	Color_Position red;
+	Color_Position green;
+	Color_Position blue;
+}vision_position;
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
-	
-void StepMotor_ToStepData(StepMotorStruct *motor,int32_t step,uint16_t speed,uint8_t flag);
-void StepMotor_ToAngleData(StepMotorStruct *motor,int16_t angle,uint16_t speed,uint8_t flag);
-void StepMotor_ToStepControl(StepMotorStruct *motor);
-int16_t StepMotor_Time(StepMotorStruct *motor);
-	
-void StepMotor_Stop(StepMotorStruct *motor);	
-void StepMotor_GetState(StepMotorStruct *motor);
 
-	
+/**
+ * @brief 初始化机械臂控制
+ */
+void arm_ctl_init(UART_HandleTypeDef *pHUART);
+
+/**
+ * @brief 电机绝对移动
+ */
+void stepmotor_move(stepmotor_t *motor, float position);
+
+/**
+ * @brief 电机绝对旋转
+ */
+void stepmotor_rotate(stepmotor_t *motor, float position);
+
+/**
+ * @brief 控制机械臂到达指定位置
+ */
+void arm_move(Point2f XY, float Z);
+
+/**
+ * @brief 机械臂抓取指定点位
+ */
+Point2f arm_ground_place(Point2f pos, float z);
+
+/**
+ * @brief 等待机械臂的所有电机运动完毕
+ */
+void arm_move_sync(void);
+
+void stepmotor_halt(stepmotor_t *motor);	
+void StepMotor_GetState(stepmotor_t *motor);
+void Arm_Scan(void);
+void Arm_X_Zip(void);
 uint16_t angle_to_position(float angle);
 void Arm_Action(ArmAction action, ArmTarget color);
-
+void Arm_Action_Store_To_Ground2(ArmTarget color);
 	
 	
 #ifdef __cplusplus

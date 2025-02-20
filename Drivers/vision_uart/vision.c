@@ -17,10 +17,10 @@ ps_uart_handle_t vision_uart_handle;
  */
 void vision_angle_calibrate(void)
 {
-    vision_info_instance_t *instance = &vision_info.instance;
-    if (instance->updated != ps_comm_type_ring_angle_detect)
+    volatile vision_info_instance_t *instance = &vision_info.instance;
+    if (instance->updated != ps_comm_type_POS_DETECT)
     {
-        instance->can_adjust_yaw = false;        
+        instance->can_adjust_yaw = false;
     } else
     {
         /**
@@ -30,7 +30,7 @@ void vision_angle_calibrate(void)
         if (!instance->can_adjust_yaw)
         {
             instance->can_adjust_yaw = true;
-            instance->last_frame_gyro_yaw = vision_info.ring_angle;
+            instance->last_frame_gyro_yaw = HWT101Data.YawZ;
         } else
         {
             // 获取上一帧的偏航角和视觉误差
@@ -38,7 +38,7 @@ void vision_angle_calibrate(void)
         }
         // 获取当前偏航角
         instance->curr_frame_gyro_yaw = HWT101Data.YawZ;
-        instance->last_frame_vision_angle = vision_info.ring_angle;
+        instance->last_frame_vision_angle = vision_info.pos_detect;
     }
 }
 
@@ -55,6 +55,12 @@ void vision_init(UART_HandleTypeDef *pHUART)
 
     // 初始化视觉数据
     vision_info.instance.updated = ps_comm_type_error;
+    vision_info.order[0] = 1;
+    vision_info.order[1] = 2;
+    vision_info.order[2] = 3;
+    vision_info.order[3] = 3;
+    vision_info.order[4] = 2;
+    vision_info.order[5] = 1;
 #   ifdef __PS_UART_INDICATOR
     vision_info.accept_sum = 0;
 #   endif
@@ -81,18 +87,59 @@ void vision_subscribe(ps_comm_type_t type)
     __vision_subscribe(&TX_BUFFER);
 }
 
-void vision_subscribe_ring(color_t ring)
+void vision_subscribe_pos(uint8_t pos)
 {
     static PsCommRawFrame TX_BUFFER; // 发送数据用的缓冲区
-    TX_BUFFER.frame.addr = ps_comm_type_select_ring;
-    TX_BUFFER.frame.select_ring.color = ring;
+    TX_BUFFER.frame.addr = ps_comm_type_POS_DETECT_REQ;
+    TX_BUFFER.frame.pos_detect_req.pos = pos;
     __vision_subscribe(&TX_BUFFER);
+}
+
+void vision_subscribe_item(color_t item)
+{
+    static PsCommRawFrame TX_BUFFER; // 发送数据用的缓冲区
+    TX_BUFFER.frame.addr = ps_comm_type_ITEM_DETECT_REQ;
+    TX_BUFFER.frame.ring_pos_req.color = item;
+    __vision_subscribe(&TX_BUFFER);
+}
+
+void vision_subscribe_rings()
+{
+    static PsCommRawFrame TX_BUFFER; // 发送数据用的缓冲区
+    TX_BUFFER.frame.addr = ps_comm_type_RING_POS_REQ;
+    for (int x=1; x<=3; x++)
+    {
+        color_t color = (color_t)x;
+        TX_BUFFER.frame.ring_pos_req.color = color;
+        vision_info.instance.select_color = color;
+        __vision_subscribe(&TX_BUFFER);
+        vision_sync(ps_comm_type_RING_POS);
+        vision_info.storage_points[x-1] = vision_info.point2f;
+    }
+    vision_subscribe(ps_comm_type_IDLE_REQ); // 让视觉不要再扫描了
+}
+
+Point2f vision_get_ring(color_t color)
+{
+    return vision_info.storage_points[(int)color-1];
 }
 
 void vision_sync(ps_comm_type_t type)
 {
     vision_info.instance.updated = ps_comm_type_error;
-    while (vision_info.instance.updated != type) HAL_Delay(VISION_POLL_INTERVAL);
+    switch (type)
+    {
+    case ps_comm_type_ITEM_DETECT:
+    case ps_comm_type_RING_POS:
+        while (   vision_info.instance.updated != type
+               || vision_info.index != vision_info.instance.select_color)
+            HAL_Delay(VISION_POLL_INTERVAL);
+        break;
+    
+    default:
+        while (vision_info.instance.updated != type) HAL_Delay(VISION_POLL_INTERVAL);
+        break;
+    }
 }
 
 bool vision_update_nowait()
@@ -112,24 +159,26 @@ bool vision_update_nowait()
                 vision_info.accept_sum++;
 #           endif
 
+            vision_info.instance.updated = frame->addr;
             // 更新对应的信息
             switch (frame->addr)
             {
-            case ps_comm_type_scan_qr:
-                vision_info.instance.updated = ps_comm_type_scan_qr;
+            case ps_comm_type_SCAN_QR_REQ:
                 memcpy(vision_info.order, frame->scan_qr.color,
                     sizeof(color_t)*ITEM_COUNT*ROUND_COUNT);
                 break;
-            case ps_comm_type_ring_pos_detect:
-                vision_info.instance.updated = ps_comm_type_ring_pos_detect;
-                vision_info.ring_pos.x = (float)frame->ring_center.x * VISION_SCALE;
-                vision_info.ring_pos.y = (float)frame->ring_center.y * VISION_SCALE;
+            case ps_comm_type_ITEM_DETECT:
+                vision_info.item_detect = (vision_item_pos_define_t)frame->item_detect.pos;
                 break;
-            case ps_comm_type_ring_angle_detect:
-                vision_info.instance.updated = ps_comm_type_ring_angle_detect;
-                vision_info.ring_angle = frame->ring_angle.angle;
-                vision_info.ring_pos.x = (float)frame->ring_angle.x * VISION_SCALE;
-                vision_info.ring_pos.y = (float)frame->ring_angle.y * VISION_SCALE;
+            case ps_comm_type_RING_POS:
+                vision_info.index = frame->ring_pos.color;
+                vision_info.point2f.x = frame->ring_pos.x;
+                vision_info.point2f.y = frame->ring_pos.y;
+                break;
+            case ps_comm_type_POS_DETECT:
+                vision_info.pos_detect = frame->pos_detect.angle;
+                vision_info.point2f.x = (float)frame->pos_detect.x * VISION_SCALE;
+                vision_info.point2f.y = (float)frame->pos_detect.y * VISION_SCALE;
                 break;
             }
         }

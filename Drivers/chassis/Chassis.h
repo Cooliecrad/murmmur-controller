@@ -42,8 +42,14 @@ void chassis_move(uint8_t acc, uint16_t speed, Point2f dst);
 void chassis_shift(uint8_t acc, uint16_t speed, Point2f dst);
 
 /**
- * @brief 平移到指定目标点，采用世界坐标系
- * @param dst 移动的三维坐标
+ * @brief 平移到采用世界坐标系
+ * @param dst 移动的二维坐标
+ */
+void chassis_to(uint8_t acc, uint16_t speed, Point2f dst);
+
+/**
+ * @brief 平移到指定目标点，采用交换了XY的世界坐标系
+ * @param dst 移动的二维坐标
  */
 void chassis_move_abs(uint8_t acc, uint16_t speed, Point2f dst);
 

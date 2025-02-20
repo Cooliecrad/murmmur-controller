@@ -6,6 +6,8 @@
  */
 
 #include "common.h"
+#include <math.h>
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -43,6 +45,36 @@ Point2f coordinate_transform(Point2f point, Pose2f ref);
  * @return 旧坐标系下的点
  */
 Point2f coordinate_transform_reverse(Point2f point, Pose2f ref);
+
+/**
+ * @brief 计算 point 是否在 lower和upper围成的矩形 范围内
+ * @note 1. 必须满足 lower.x <= upper.x && lower.y <= upper.y
+ * @note 2. point可以在矩形的边上 
+ */
+bool point2f_in_range(Point2f point, Point2f lower, Point2f upper);
+
+/**
+ * @brief 从 [-360, 360] 转化到 [-180, 180]
+ * @note 如果是(-∞, +∞)，使用angle_normal_large()
+ */
+inline float angle_normal(float angle)
+{
+    if (angle > 180) return angle - 360;
+    else if (angle < -180) return 360 + angle;
+    return angle;
+}
+
+/**
+ * @brief 从 (-∞, +∞) 转化到 [-180, 180]
+ */
+float angle_normal_large(float angle);
+
+/**
+ * @brief 求出 右手系下 从原点到的point的射线的旋转角
+ */
+float point_to_angle(Point2f point);
+
+double atan_taylor(double x);
 
 #ifdef __cplusplus
 }

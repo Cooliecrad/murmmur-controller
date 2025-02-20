@@ -33,12 +33,12 @@
 #include "HWT101.h"
 #include "StepmotorGPIO.h"
 #include "maintask.h"
-#include "Arm.h"
 #include "servor_ctl.h"
 #include "easy_font.h"
 #include "PID.h"
 #include "Chassis.h"
 #include "using_PID.h"
+#include "Arm.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -76,88 +76,28 @@ uint16_t jiaodu;
 
 float targetx;
 float targety;
+float armangle;
+float armdistance;
 
+ArmAction actiontest;
+ArmTarget colortest;
+
+uint16_t time;
+float angle1;
+float angle2;
+float clawangle;
+uint8_t servorflag;
+float angletest;
+uint16_t LINE_SPEED=100;//500
+uint16_t LINE_ACC=50;//150
+
+Point2f visionpositiontest;
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
 extern PIDTypeDef AnglePID;
-
-StepMotorStruct Motor_X = {
-    //??????
-    .ID = 3,
-    .huart = &huart8,
-    .Ratio = 1,
-    //?????
-    .Motor_Direction = MOTOR_FORWARD,
-
-    .Steps_Cur = 0,
-    .Steps_Tar = 0,
-    .Steps_Sum = 0,
-    .Steps_ToDir = 0,
-    .Angle = 0,
-
-    .Speed_Tar = 2000, //??????
-    .Speed_Max = 5000,
-    .Speed_Min = 0,
-    .acceleration = 220.0f,
-    .deceleration = 200.0f,
-    //?????
-    .Slow_Flag = 1, //??????????
-    .Slow_Finish_Flag = 0,
-    .Step_Finish_Flag = 0,
-    .Step_Running_Flag = 0,
-    .ToStep_Flag = 1};
-
-StepMotorStruct Motor_R = {
-    //????????
-    .htim = &htim2,
-    .GPIO_Port_EN = GPIOA,
-    .GPIO_PIN_EN = GPIO_PIN_0,
-    .GPIO_Port_DIR = GPIOC,
-    .GPIO_PIN_DIR = GPIO_PIN_13,
-    .GPIO_Port_OUT = GPIOB,
-    .GPIO_PIN_OUT = GPIO_PIN_10,
-    //????
-    .Steps_Cur = 0,
-    .Steps_Tar = 0,
-    .Steps_Sum = 0,
-    //???
-    .Speed_Max = 28800,
-    .Speed_Min = 3000,
-    //?????
-    .Slow_Flag = 0,
-    .Slow_Finish_Flag = 0,
-    .Step_Finish_Flag = 0,
-    .Step_Running_Flag = 0,
-};
-
-/*
-????????22400????
-*/
-StepMotorStruct Motor_Z = {
-    //????????
-    .htim = &htim5,
-    .GPIO_Port_EN = GPIOA,
-    .GPIO_PIN_EN = GPIO_PIN_1,
-    .GPIO_Port_DIR = GPIOC,
-    .GPIO_PIN_DIR = GPIO_PIN_14,
-    .GPIO_Port_OUT = GPIOB,
-    .GPIO_PIN_OUT = GPIO_PIN_11,
-    //????
-    .Steps_Cur = 0,
-    .Steps_Tar = 0,
-    .Steps_Sum = 0,
-    //???
-    .Speed_Max = 28800,
-    .Speed_Min = 3000,
-    //?????
-    .Slow_Flag = 0,
-    .Slow_Finish_Flag = 0,
-    .Step_Finish_Flag = 0,
-    .Step_Running_Flag = 0,
-};
 
 volatile uint8_t arm_test_flag = 0;
 volatile ArmAction action_test;
@@ -180,7 +120,7 @@ void PeriphCommonClock_Config(void);
 /**
  * @brief  The application entry point.
  * @retval int
- */
+ */ 
 int main(void)
 {
     /* USER CODE BEGIN 1 */
@@ -196,15 +136,14 @@ int main(void)
 
     /* USER CODE END Init */
 
-    /* Configure the system clock */
+    /* Configure the system clock */    
     SystemClock_Config();
 
     /* Configure the peripherals common clocks */
     PeriphCommonClock_Config();
 
     /* USER CODE BEGIN SysInit */
-#define LINE_SPEED 500
-#define LINE_ACC 150
+
     /* USER CODE END SysInit */
 
     /* Initialize all configured peripherals */
@@ -231,7 +170,7 @@ int main(void)
     Communication_Start();
 
     servor_ctl_init(&huart5); // 初始化舵机控制
-
+    arm_ctl_init(&huart8);
     vision_init(&huart6); // 初始化视觉通信
 
     // 初始化显示屏
@@ -253,9 +192,9 @@ int main(void)
     chassis_init(&huart2);
     // Screwrod_Blockage_protection_Disable(&Chassis);
 
-    // StepMotor_ToStepData(&Motor_R,0,9600,1);
+    // StepMotor_ToStepData(&pARM_DEFINE->motor_r,0,9600,1);
     // StepMotor_ToStepData(&Motor_Z,0,9600,1);
-    // StepMotor_ToStepControl(&Motor_R);
+    // StepMotor_ToStepControl(&pARM_DEFINE->motor_r);
     // StepMotor_ToStepControl(&Motor_Z);
 
     HAL_GPIO_WritePin(GPIOE, GPIO_PIN_5, GPIO_PIN_SET);
@@ -275,64 +214,100 @@ int main(void)
     /* USER CODE BEGIN WHILE */
     while (1)
     {
-
-        if (arm_test_flag == 1)
+        if (arm_test_flag == 1) // 设置角度
         {
+            stepmotor_rotate(&pARM_DEFINE->motor_r, armangle);
             arm_test_flag = 0;
-            Arm_Action(action_test, color_test);
         }
-        else if (arm_test_flag == 2)
+        else if (arm_test_flag == 2) // Z轴移动测试
+        {
+            stepmotor_move(&pARM_DEFINE->motor_z, armdistance);
+            arm_test_flag = 0;
+        }
+        else if (arm_test_flag == 3) // X轴移动测试
+        {
+            stepmotor_move(&pARM_DEFINE->motor_x, armdistance);
+            arm_test_flag = 0;
+        }
+        else if (arm_test_flag == 4) // 爪子开闭测试
         {
             arm_test_flag = 0;
-            servor_ctl(servor_object_CLAW, 1);
-            HAL_Delay(1000);
-            servor_ctl(servor_object_CLAW, 2);
-            HAL_Delay(1000);
+            servor_rotate(300, 5, armdistance);
+        }
+        else if (arm_test_flag == 5) // R旋转测试
+        {
+            arm_test_flag = 0;
+            for (int x = 0; x < 20; x++)
+            {
+                stepmotor_rotate(&pARM_DEFINE->motor_r, 270);
+            }
+            for (int x = 0; x < 20; x++)
+            {
+                stepmotor_rotate(&pARM_DEFINE->motor_r, -270);
+            }
+            stepmotor_rotate(&pARM_DEFINE->motor_r, 0);
+        }
+        else if (arm_test_flag == 6)
+        {
+            Arm_Action(actiontest, colortest);
+            arm_test_flag = 0;
+        } else if (arm_test_flag == 7)
+        {
+            arm_ground_place(visionpositiontest, StepMotor_Z_Position[2]);
+            arm_test_flag = 0;
+        }
+
+        if (servorflag == 1)
+        {
+            servor_rotate_2(time, 0, angle1, 1, angle2);
+            servorflag = 0;
+        }
+        else if (servorflag == 2)
+        {
+            servor_rotate(time, 6, clawangle);
+            servorflag = 0;
         }
 
         if (controlflag == 1)
         {
-            while (1)
-            {
-                USER_POSE.xy.y = 0.8;
-                USER_POSE.xy.x = 0;
-                chassis_move(LINE_ACC, LINE_SPEED, USER_POSE.xy);
+//            while (1)
+//            {
+//                USER_POSE.xy.x = 2;
+//                USER_POSE.xy.y = 0;
+//                chassis_move(LINE_ACC, LINE_SPEED, USER_POSE.xy);
 
-                USER_POSE.xy.y = -0.8;
-                chassis_move(LINE_ACC, LINE_SPEED, USER_POSE.xy);
-            }
+//                USER_POSE.xy.x = -2;
+//                chassis_move(LINE_ACC, LINE_SPEED, USER_POSE.xy);
+//            }
+			
+			chassis_to(LINE_ACC, LINE_SPEED, USER_POSE.xy);
             controlflag = 0;
         }
         else if (controlflag == 2)
         {
-            USER_POSE.xy.x = 0.5;
-            USER_POSE.xy.y = 0;
-            USER_POSE.angle = 0;
-            chassis_move_speed(LINE_ACC, &USER_POSE);
+            chassis_rotate_abs(LINE_ACC, LINE_SPEED, angletest);
+			chassis_rotate_abs(LINE_ACC, LINE_SPEED, angletest);
             controlflag = 0;
         } else if (controlflag == 3)
         {
             controlflag = 0;
-            vision_subscribe_ring(color_blue);
-            HAL_Delay(1000);
-            vision_subscribe_ring(color_green);
-            HAL_Delay(1000);
-            vision_subscribe_ring(color_red);
-            HAL_Delay(1000);
+            chassis_to(LINE_ACC, LINE_SPEED, USER_POSE.xy);
         }
-
         if (anglecontrolflag == 1)
         {
             while (1)
             {
-                USER_POSE.angle = 0;
-                chassis_rotate_abs(LINE_ACC, LINE_SPEED, USER_POSE.angle);
-                USER_POSE.angle = 150;
-                chassis_rotate_abs(LINE_ACC, LINE_SPEED, USER_POSE.angle);
-                USER_POSE.angle = -50;
-                chassis_rotate_abs(LINE_ACC, LINE_SPEED, USER_POSE.angle);
-                USER_POSE.angle = 50;
-                chassis_rotate_abs(LINE_ACC, LINE_SPEED, USER_POSE.angle);
+                for (float x=0; x<360; x++)
+                {
+                    chassis_rotate_abs(LINE_ACC, LINE_SPEED, x);
+                }
+                // chassis_rotate_abs(LINE_ACC, LINE_SPEED, USER_POSE.angle);
+                // USER_POSE.angle = 150;
+                // chassis_rotate_abs(LINE_ACC, LINE_SPEED, USER_POSE.angle);
+                // USER_POSE.angle = -50;
+                // chassis_rotate_abs(LINE_ACC, LINE_SPEED, USER_POSE.angle);
+                // USER_POSE.angle = 50;
+                // chassis_rotate_abs(LINE_ACC, LINE_SPEED, USER_POSE.angle);
             }
             anglecontrolflag = 0;
         }

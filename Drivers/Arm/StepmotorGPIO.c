@@ -1,15 +1,15 @@
 #include "StepmotorGPIO.h"
 
-////ÉèÖÃ²½½øÊýÁ¿Êý¾Ý
-//void StepMotor_SetData(StepMotorStruct *motor,int32_t step,float speed,uint8_t flag)
+////ï¿½ï¿½ï¿½Ã²ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+//void StepMotor_SetData(stepmotor_t *motor,int32_t step,float speed,uint8_t flag)
 //{
 //	if(motor->Step_Running_Flag ==1 )
 //		return;
-//	//¸üÐÂ±êÖ¾Î»
+//	//ï¿½ï¿½ï¿½Â±ï¿½Ö¾Î»
 //	motor->Step_Flag=1;
 //	motor->ToStep_Flag=0;
 //	motor->ToAngle_Flag=0;
-//	//¸üÐÂ²ÎÊý
+//	//ï¿½ï¿½ï¿½Â²ï¿½ï¿½ï¿½
 //	motor->Steps_Tar=step;
 //	motor->Slow_Flag=flag;
 //	motor->Speed_Tar=speed;
@@ -19,16 +19,16 @@
 //		motor->Speed_Cur=motor->Speed_Min;
 //}
 
-////ÉèÖÃ²½½ø¡°µ½µ×¼¸²½¡±Êý¾Ý
-//void StepMotor_ToStepData(StepMotorStruct *motor,int32_t ToStep,float speed,uint8_t flag)
+////ï¿½ï¿½ï¿½Ã²ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½×¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+//void StepMotor_ToStepData(stepmotor_t *motor,int32_t ToStep,float speed,uint8_t flag)
 //{
 //	if(motor->Step_Running_Flag ==1 )
 //		return;
-//	//¸üÐÂ±êÖ¾Î»
+//	//ï¿½ï¿½ï¿½Â±ï¿½Ö¾Î»
 //	motor->Step_Flag=0;
 //	motor->ToStep_Flag=1;
 //	motor->ToAngle_Flag=0;
-//	//¸üÐÂ²ÎÊý
+//	//ï¿½ï¿½ï¿½Â²ï¿½ï¿½ï¿½
 //	motor->Steps_Tar = ToStep - motor->Steps_Sum ;
 //	motor->Steps_ToDir=ToStep;
 //	motor->Speed_Tar=speed;
@@ -40,22 +40,22 @@
 //	motor->Step_Finish_Flag=0;
 //}
 
-////ÉèÖÃ²½½ø¡°µ½¶àÉÙ¶È¡±Êý¾Ý
-//void StepMotor_ToAngleData(StepMotorStruct *motor,float ToAngle,float speed,uint8_t flag)
+////ï¿½ï¿½ï¿½Ã²ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ù¶È¡ï¿½ï¿½ï¿½ï¿½ï¿½
+//void StepMotor_ToAngleData(stepmotor_t *motor,float ToAngle,float speed,uint8_t flag)
 //{
 //	if(motor->Step_Running_Flag ==1 )
 //		return;
-//	//¸üÐÂ±êÖ¾Î»
+//	//ï¿½ï¿½ï¿½Â±ï¿½Ö¾Î»
 //	motor->Step_Flag=0;
 //	motor->ToStep_Flag=1;
 //	motor->ToAngle_Flag=0;
-//	//¸üÐÂ²ÎÊý
+//	//ï¿½ï¿½ï¿½Â²ï¿½ï¿½ï¿½
 //	int16_t toangle = (ToAngle/360.0)*3200;
 //	StepMotor_ToStepData(motor,toangle,speed,flag);
 //}
 
-////¸üÐÂ¶¨Ê±Æ÷£¬ÊµÏÖµ÷ËÙ
-//void StepMotor_Updata(StepMotorStruct *motor)
+////ï¿½ï¿½ï¿½Â¶ï¿½Ê±ï¿½ï¿½ï¿½ï¿½Êµï¿½Öµï¿½ï¿½ï¿½
+//void StepMotor_Updata(stepmotor_t *motor)
 //{
 //	HAL_TIM_Base_Stop_IT(motor->htim);
 //	uint16_t new_prescaler = (240000000 / (motor->Speed_Cur*1000)) - 1;
@@ -66,8 +66,8 @@
 //	HAL_TIM_Base_Start_IT(motor->htim);
 //}
 
-////»ºÆô¶¯¡ª¡ªÇ°500²½
-//void StepMotor_SlowStart(StepMotorStruct* motor)
+////ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç°500ï¿½ï¿½
+//void StepMotor_SlowStart(stepmotor_t* motor)
 //{
 //	float delta_v = motor->acceleration * (1.0f/motor->Speed_Cur);
 //	motor->Speed_Cur +=delta_v;
@@ -84,8 +84,8 @@
 //	StepMotor_Updata(motor);
 //}
 
-////»ºÍ£
-//void StepMotor_SlowStop(StepMotorStruct* motor)
+////ï¿½ï¿½Í£
+//void StepMotor_SlowStop(stepmotor_t* motor)
 //{
 //	float delta_v = motor->acceleration * (1.0f/motor->Speed_Cur);
 //	
@@ -98,7 +98,7 @@
 //	StepMotor_Updata(motor);
 //}
 
-////Ö±½Ó·Åµ½ÖÐ¶Ï»Øµ÷º¯ÊýÀï
+////Ö±ï¿½Ó·Åµï¿½ï¿½Ð¶Ï»Øµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½stepmotor_t
 //void StepMotor_Control(StepMotorStruct *motor)
 //{
 //	if(motor->ToStep_Flag==1 && motor->Step_Running_Flag ==0 &&motor->Step_Finish_Flag==0 && motor->Step_Running_Flag ==0)

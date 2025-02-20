@@ -41,17 +41,23 @@ uint8_t Servor_Packet_2[13] = {0x55, 0x55, 0x0B, 0x03, 0x02, 0, 0, 0, 0, 0, 0, 0
 HAL_StatusTypeDef servor_rotate_2(uint16_t duration, uint8_t addr1, float angle1,
                                   uint8_t addr2, float angle2)
 {
-    Servor_Packet[5] = duration & 0xFF;
-    Servor_Packet[6] = duration >> 8;
+    servor_rotate(duration, addr1, angle1);
+    HAL_Delay(10);
+    return servor_rotate(duration, addr2, angle2);
+    // Servor_Packet[5] = duration & 0xFF;
+    // Servor_Packet[6] = duration >> 8;
 
-    uint16_t position = angle_to_position(angle1);
-    Servor_Packet[7] = addr1;
-    Servor_Packet[8] = position & 0xFF;
-    Servor_Packet[9] = position >> 8;
+    // uint16_t position = angle_to_position(angle1);
+    // Servor_Packet[7] = addr1;
+    // Servor_Packet[8] = position & 0xFF;
+    // Servor_Packet[9] = position >> 8;
 
-    position = angle_to_position(angle2);
-    Servor_Packet[7] = addr2;
-    Servor_Packet[8] = position & 0xFF;
-    Servor_Packet[9] = position >> 8;
-    return HAL_UART_Transmit_DMA(HUART, Servor_Packet, sizeof(Servor_Packet));
+    // position = angle_to_position(angle2);
+    // Servor_Packet[7] = addr2;
+    // Servor_Packet[8] = position & 0xFF;
+    // Servor_Packet[9] = position >> 8;
+    // return HAL_UART_Transmit_DMA(HUART, Servor_Packet, sizeof(Servor_Packet));
 }
+
+//__HAL_TIM_SetCompare(&htim, Channel, (uint16_t)pwm_duty_pulse);
+

@@ -107,25 +107,32 @@ HAL_StatusTypeDef emm42_sync(emm42_handle_t handle);
 HAL_StatusTypeDef emm42_reset(emm42_handle_t handle);
 
 /**
- * @brief 设置响应模式
- * @note 这个指令相当耗时间，应该和后面一个指令间隔几十毫秒的延时
- */
-HAL_StatusTypeDef emm42_response(emm42_handle_t handle, uint8_t addr, bool reached);
-
-/**
  * @brief 等待最后一次运动到达（标志量：handle->reached）
  * @note 这个函数只有用户需要到位等待的时候才需要调用，是可选功能。有时候，
  * 不是必须等待底盘控制指令结束，如果平移的话，完全可以尝试叠加的效果
  */
 void emm42_arrived(emm42_handle_t handle, uint8_t addr);
 
-// /**
-//  * @brief 如果步进电机需要使用emm42_arrived()，那么需要将这个函数放到对应的
-//  * DMA接收中断中
-//  */
-// void emm42_receive_DMA_IT(emm42_handle_t handle);
+/**
+ * @paragraph 广播设置参数
+ * @note 关于广播：
+ * @note 1. 如果没有1号地址的电机，将无法采用广播设置
+ * @note 2. 如果采用广播地址，所有的电机将会和1号地址的电机参数相同
+ */
 
-// void emm42_receive_IT(emm42_handle_t handle);
+/**
+ * @brief 设置响应模式
+ * @param addr 要使用广播地址，请阅读"广播设置参数""
+ * @note 这个指令相当耗时间，应该和后面一个指令间隔几十毫秒的延时
+ */
+void emm42_set_response(emm42_handle_t handle, uint8_t addr, bool reached);
+
+/**
+ * @brief 设置到位窗口大小
+ * @param addr 要使用广播地址，请阅读"广播设置参数""
+ * @param deg 单位 0.1°
+ */
+void emm42_set_reach_wnd(emm42_handle_t handle, uint8_t addr, uint16_t deg);
 
 #ifdef __cplusplus
 }

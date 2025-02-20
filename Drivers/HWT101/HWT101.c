@@ -52,7 +52,7 @@ void HWT101_init(UART_HandleTypeDef *pHUART)
 
 void HWT101_calibrate(float dst)
 {
-    HWT101Data.Yaw_calib = dst - HWT101Data.YawZ;
+    HWT101Data.Yaw_calib = angle_normal(dst - HWT101Data.YawZ);
 }
 
 bool HWT101_update_nowait(void)
@@ -112,4 +112,12 @@ void HWT101_update(void)
 void HWT101_yaw_reset(void)
 {
     ps_uart_transmit(HWT101_uart_handle, CMD_CALIYAW, 5);
+}
+
+float HWT101_read_yaw(void)
+{
+	float angle = HWT101Data.YawZ + HWT101Data.Yaw_calib;
+    if (angle > 180) return angle - 360;
+    else if (angle < -180) return 360 + angle;
+    return angle;
 }

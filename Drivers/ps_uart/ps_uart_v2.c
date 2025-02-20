@@ -47,7 +47,6 @@ void ps_uart_init(ps_uart_handle_t handle)
         instance->accept_sum = 0;
         instance->adjust = 0;
 #   endif
-
     HAL_UARTEx_ReceiveToIdle_DMA(handle->pHUART, handle->buffer[0], handle->recv_len);
 }
 
@@ -176,11 +175,4 @@ void ps_uart_receive_DMA_IT(ps_uart_handle_t handle)
     }
     // 调用用户的回调
     if (handle->recv_callback) handle->recv_callback();
-}
-
-uint8_t ps_uart_sigma_check_sum(uint8_t *frame, int len)
-{
-    uint8_t sum = 0;
-    for (int x=0; x<len; x++) sum += frame[x];
-    return sum;
 }

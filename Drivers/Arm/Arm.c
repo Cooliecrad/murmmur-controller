@@ -1,231 +1,305 @@
 #include "Arm.h"
 #include "servor_ctl.h"
+#include "coordinate.h"
+#include "vision.h"
+#include "driver_middle.h"
 
 #define MotorSpeed 1500
-#define WaitFlag 1
-
 /*----------------------步进电机参数部分----------------------*/
+const static float PULSE_PER_ROUND = 3200;
+
+arm_define_t ARM_DEFINE = {
+    .center = {
+        .x = -197,
+        .y = 48
+    },
+    .claw_distance = 143,
+    .deadzone = {
+        .lower = {.x = -100, .y = -100},
+        .upper = {.x = 20, .y = 100},
+        .inner_max = 15,
+        .outer_max = 100
+    },
+    .motor_r = {
+        .ID = 1,
+        .ratio = 1. / 360. * 90. / 32. * PULSE_PER_ROUND,
+        .acc = 200,
+        .speed = 2100,
+        .zero_shift = 0,
+        .lower = -360,
+        .upper = 360
+    },
+
+    .motor_x = {
+        .ID = 3,
+        .ratio = 50,
+        .acc = 250,
+        .speed = 2300,
+        .zero_shift = -10,
+        .lower = 0,
+        .upper = 300,
+    },
+
+    .motor_z = {
+        .ID = 2,
+        .ratio = 100,
+        .acc = 250,
+        .speed = 2300,
+        .zero_shift = 0,
+        .lower = 10,
+        .upper = 140,
+    }
+};
+arm_define_t *pARM_DEFINE = &ARM_DEFINE;
 
 // 减速比好像是1:3
 // 存储
-int16_t StepMotor_R_StorePosition[6] = {
-	0,		  //0 一般状态
-	1425, //1 红
-	1425, //2 绿
-	7575, //3 蓝
-	4500, //4 物料识别位置（转180）
-	9000  //5 限位
-};
-// 摆放
-int16_t StepMotor_R_PlacePosition[6] = {
-	0,		  // 0一般位置
-	3074, // 1红
-	4500, // 2绿
-	5520, // 3蓝
-	4500, // 4物料识别位置（转180）
-	9000  // 限位
+float StepMotor_R_StorePosition[] = {
+    0,	   // 一般状态
+    70,	   // 红
+    82.5,	   // 绿
+    291, // 蓝
+    180,   // 物料识别
+    180,   // 圆盘中下位置
+    193.5,   // 圆盘左上位置
+    166.5,   // 圆盘右上位置
+    360	   // 限位
+
 };
 
-// 3200步为一圈
-// 9000到底儿
-int16_t StepMotor_Z_Position[7] = {
-	500,		 //0 一般状态(最高点)
-	5800,	 //1 从圆盘上取
-	12000,	 //2 从地面上取
-	12000,	 //3 放置到地面上
-	6500,	 //4 堆放
-	3700,	 //5 放到储物机构中高度
-	3200 * 3 //6 限位——盲猜转四圈
+float StepMotor_R_PlacePosition[] = {
+    0,	   // 一般状态
+    148,	   // 红
+    184,	   // 绿
+    218, 		// 蓝
+
+
 };
 
-int16_t StepMotor_Forward_Store[6]={
-	200,	// 一般状态——d=0mm
-	4600, // 红
-	200,	// 绿
-	200, // 蓝
-	1600, // 取圆盘上物块的位置
-	9600	// 完全伸出——d=115mm
+float StepMotor_Forward_Place[] = {
+    0,	   // 一般状态
+    110,	   // 红
+    75,	   		// 绿
+    110,	   // 蓝
 };
 
-int16_t StepMotor_Forward_Place[6]={
-	200,		// 一般状态
-	3200, // 红
-	1600,	// 绿
-	3200, // 蓝
+
+float StepMotor_Forward_Store[] = {
+    0,	   // 一般状态
+    1,	   // 红
+    80,	   // 绿
+    1,	   // 蓝
+    70, // 圆盘中下
+    230,	   // 圆盘左上
+    230,	   // 圆盘右上
+    115	   // 完全伸出
 };
 
+float StepMotor_Z_Position[] = {
+    10, // 最高位置
+    65, // 圆盘夹取的高度
+    130, // 夹爪到地面高度
+    120,
+    50,	//码垛高度
+    42, // 放到存储机构的位置
+    16
+};
+
+//vision_position Color_Vision_Position={
+//	red={180,0,0},
+//	green={180,0,0},
+//	blue={180,0,0},
+//};
+vision_position Color_Vision_Position={0,0,0,0,0,0};
 
 
 /*---------------步进电机控制部分---------------------*/
-extern uint8_t UART8_RxData[4];
+// 绝对位置控制
+//  0--地址
+//  1--0xFD
+//  2--方向
+//  3--速度高八位
+//  4--速度低八位
+//  5--加速度
+//  6--脉冲
+//  7--脉冲
+//  8--脉冲
+//  9--脉冲
+//  10--相对/绝对--1绝对，0相对
+//  11--多机同步标志
+//  12--校验字节
 
-void Arm_Rx(StepMotorStruct *motor)
+// 供通信使用
+uint8_t ARM_RECV_BUFFER0[4];
+uint8_t ARM_RECV_BUFFER1[4];
+uint8_t ARM_RECV_BUFFER2[4];
+
+ps_uart_t ARM_PS_UART;
+emm42_v5_t ARM_EMM42;
+emm42_handle_t arm_emm42_handle;
+
+void arm_ctl_init(UART_HandleTypeDef *pHUART)
 {
-	if(UART8_RxData[0]!=0)
-	{
-			motor->Step_Finish_Flag=1;
-			motor->Step_Running_Flag=0;
-	}
+    // 初始化串口
+    ARM_PS_UART.buffer[0] = ARM_RECV_BUFFER0;
+    ARM_PS_UART.buffer[1] = ARM_RECV_BUFFER1;
+    ARM_PS_UART.buffer[2] = ARM_RECV_BUFFER2;
+    ARM_PS_UART.recv_len = sizeof(ARM_RECV_BUFFER0);
+    ARM_PS_UART.pHUART = pHUART;
+    ARM_PS_UART.recv_callback = NULL;
+    ARM_EMM42.ps_uart_handle = &ARM_PS_UART;
+    arm_emm42_handle = &ARM_EMM42;
+
+    // 初始化步进电机结构体
+    arm_define_t *arm = pARM_DEFINE;
+    arm->deadzone.inner = true;
+    arm->motor_x.instance.range = arm->motor_x.upper - arm->motor_x.lower;
+    arm->motor_z.instance.range = arm->motor_z.upper - arm->motor_z.lower;
+    arm->motor_r.instance.range = arm->motor_r.upper - arm->motor_r.lower;
+
+    // 初始化电机
+    emm42_v5_init(&ARM_EMM42);
+    emm42_set_reach_wnd(&ARM_EMM42, 1, 1);
+    emm42_set_reach_wnd(&ARM_EMM42, 2, 1);
+    emm42_set_reach_wnd(&ARM_EMM42, 3, 1);
 }
 
-//绝对位置控制
-// 0--地址
-// 1--0xFD
-// 2--方向
-// 3--速度高八位
-// 4--速度低八位
-// 5--加速度
-// 6--脉冲
-// 7--脉冲
-// 8--脉冲
-// 9--脉冲
-// 10--相对/绝对--1绝对，0相对
-// 11--多机同步标志
-// 12--校验字节
-uint8_t StepMotor_ToStepPacket[13] = {00, 0xFD, 00, 00, 00, 0x0A, 00, 00, 00, 00, 01, 00, 0x6B};
-void StepMotor_ToStepData(StepMotorStruct *motor,int32_t step,uint16_t speed,uint8_t flag)
+void stepmotor_halt(stepmotor_t *motor)
 {
-	 motor->Steps_ToDir = step;
-     motor->Steps_Tar = step-motor->Steps_Sum;
-	 motor->Angle = (double)(motor->Steps_Sum * 360.0 / (3200.0 * motor->Ratio));
-     motor->Speed_Tar=speed;
-     motor->Slow_Flag=flag;
- }
-void StepMotor_ToAngleData(StepMotorStruct *motor,int16_t angle,uint16_t speed,uint8_t flag)
-{
-	motor->Angle=angle;
-	double stepDelta = (double)angle * (3200.0 * motor->Ratio) / 360.0;
-	motor->Steps_Tar=(int32_t)stepDelta;
-	motor->Speed_Tar=speed;
-    motor->Slow_Flag=flag;
+    emm42_halt(arm_emm42_handle, motor->ID, 0);
 }
 
-void StepMotor_ToStepControl(StepMotorStruct *motor)
-    
+static inline void stepmotor_arrived(stepmotor_t *motor)
 {
-    if(motor->ToDistance_Flag==1)//距离控制
+    emm42_arrived(arm_emm42_handle, motor->ID);
+}
+
+/**
+ * @brief 驱动特定电机移动到指定位置
+ */
+static inline void __stepmotor_move(stepmotor_t *motor, float position)
+{
+    // 计算实际移动距离
+    float distance = position - motor->position;
+    motor->position = position;
+    // 发送到驱动
+    uint8_t dir = position >= 0 ? MOTOR_FORWARD : MOTOR_BACKWARD;
+    uint32_t step = fabs(position) * motor->ratio;
+    stepmotor_arrived(motor); // 确保到位
+    emm42_pos_ctl(arm_emm42_handle, motor->ID, dir, motor->speed,
+                  motor->acc, step, 1, 0);
+}
+
+void stepmotor_move(stepmotor_t *motor, float position)
+{
+    // 移动补偿：由于步进电机零点会偏移，所以有一个抽象零点
+    // 实现这个抽象零点依靠的是零点偏移补偿
+    position -= motor->zero_shift;
+
+    // 限制移动范围
+    if (position < motor->lower)
     {
-        motor->ToStep_Flag=0;
-        motor->ToAngle_Flag=0;
-        motor->Steps_ToDir=motor->Distance / 32.0 * (3200.0 * motor->Ratio);//更新脉冲参数
-        motor->Angle = (double)(motor->Steps_ToDir * 360.0 / (3200.0 * motor->Ratio));//更新角度参数
+        position = motor->lower;
     }
-    if(motor->ToAngle_Flag==1)//角度控制
+    else if (position > motor->upper)
     {
-        motor->ToStep_Flag=0;
-        motor->ToDistance_Flag=0;
-        motor->Steps_ToDir = motor->Angle * (3200.0 * motor->Ratio) / 360.0;//更新脉冲参数
-        motor->Distance = (double)(motor->Steps_ToDir / (3200.0 * motor->Ratio) * 3.2); //更新距离参数
+        position = motor->upper;
     }
-    
-    motor->Steps_Sum+=motor->Steps_Tar;
-    
-    if(motor->ToStep_Flag==1)//脉冲控制
+
+    __stepmotor_move(motor, position);
+}
+
+void stepmotor_rotate(stepmotor_t *motor, float position)
+{
+    // 移动补偿：由于步进电机零点会偏移，所以有一个抽象零点
+    // 实现这个抽象零点依靠的是零点偏移补偿
+    position -= motor->zero_shift;
+
+    // 取值 (0, upper-lower)
+    position = fmodf(position, 360.);
+    // 越界要退一圈
+    if (position > motor->upper)
+        position -= 360;
+    else if (position < motor->lower)
+        position += 360;
+
+    __stepmotor_move(motor, position);
+}
+
+void arm_move(Point2f XY, float Z)
+{
+    // 变换XY坐标，求出前伸量和旋转角度
+    XY = coordinate_transform_XY_shift(XY, ARM_DEFINE.center);
+    float xdistance = sqrtf(powf(XY.x, 2) + powf(XY.y, 2)) - ARM_DEFINE.claw_distance;
+    float angle = (point_to_angle(XY) / PI * 180) + 180; // 机械臂的零点和X轴间隔180度
+
+    // 检测目标是否在死区，并限制Z轴
+    bool inner = false; // 本次是否移动到死区内
+    if (point2f_in_range(XY, ARM_DEFINE.deadzone.lower, ARM_DEFINE.deadzone.upper))
     {
-        motor->ToAngle_Flag=0;
-        motor->ToDistance_Flag=0;
-        motor->Angle = (double)(motor->Steps_ToDir * 360.0 / (3200.0 * motor->Ratio));//更新角度参数
-        motor->Distance = (double)(motor->Steps_ToDir / (3200.0 * motor->Ratio) * 3.2); //更新距离参数
+        ARM_DEFINE.motor_z.upper = ARM_DEFINE.deadzone.inner_max;
+        inner = true;
+    } else
+        ARM_DEFINE.motor_z.upper = ARM_DEFINE.deadzone.outer_max;
+    
+    // 如果从死区外移动到死区内，先升起机械臂
+    bool first_in = false;
+    if (inner == true && ARM_DEFINE.deadzone.inner == false)
+    {
+        first_in = true;
+        stepmotor_move(&ARM_DEFINE.motor_z, Z);
+        stepmotor_arrived(&ARM_DEFINE.motor_z); // 必须确保升起来
     }
-    //更改方向
-     if(motor->Motor_Direction)     StepMotor_ToStepPacket[2]=01;
-     else     StepMotor_ToStepPacket[2]=00;
-     if(motor->Steps_ToDir<0)
-     {
-        StepMotor_ToStepPacket[2]=00;
-         motor->Steps_ToDir=-motor->Steps_ToDir;
-     }
-     else
-        StepMotor_ToStepPacket[2]=01;     
-     StepMotor_ToStepPacket[0]=motor->ID;
-     StepMotor_ToStepPacket[3]=(uint8_t)((uint16_t)motor->Speed_Tar >> 8);//高八位
-     StepMotor_ToStepPacket[4]=(uint8_t)(motor->Speed_Tar);
-     StepMotor_ToStepPacket[5]=(uint8_t)(motor->acceleration);
-     StepMotor_ToStepPacket[6]=(uint8_t)(motor->Steps_ToDir >> 24);
-     StepMotor_ToStepPacket[7]=(uint8_t)(motor->Steps_ToDir >> 16);
-     StepMotor_ToStepPacket[8]=(uint8_t)(motor->Steps_ToDir >> 8);
-     StepMotor_ToStepPacket[9]=(uint8_t)(motor->Steps_ToDir);
-     StepMotor_ToStepPacket[10]=01;
-     StepMotor_ToStepPacket[11]=0;
-     StepMotor_ToStepPacket[12]=0x6B;
-     HAL_UART_Receive_IT(&huart8,UART8_RxData, 4);
-     HAL_UART_Transmit(motor->huart, StepMotor_ToStepPacket, 13,1000);
-    motor->Step_Running_Flag=1;
-    motor->Step_Finish_Flag=0;
+    // 定位
+    stepmotor_move(&ARM_DEFINE.motor_x, xdistance);
+    stepmotor_rotate(&ARM_DEFINE.motor_r, angle);
+    // 除开上面那种情况，其他的都是最后移动机械臂
+    if (!first_in)
+    {
+        stepmotor_arrived(&ARM_DEFINE.motor_x);
+        stepmotor_arrived(&ARM_DEFINE.motor_r);
+        stepmotor_move(&ARM_DEFINE.motor_z, Z);
+    }
+    ARM_DEFINE.deadzone.inner = inner;
 }
 
-void Forward_Store_Control(ArmTarget color)
+// 新加
+Point2f armposition = {.x = -193, .y = 50};
+Point2f ringposition;
+
+// @return 
+Point2f arm_ground_place(Point2f pos, float z)
 {
-	StepMotor_ToStepData(&Motor_X,StepMotor_Forward_Store[color],MotorSpeed,1);
-	StepMotor_ToStepControl(&Motor_X);
-}
-void Forward_Place_Control(ArmTarget color)
-{
-	StepMotor_ToStepData(&Motor_X,StepMotor_Forward_Place[color],MotorSpeed,1);
-	StepMotor_ToStepControl(&Motor_X);
+#	ifdef __USING_FULL_FUNCTION_ARM_MOVE
+    arm_move(pos, StepMotor_Z_Position[2]);
+#	else
+    float ringangle;
+    ringposition = coordinate_transform_XY_shift(pos, armposition);
+    float xdistance = sqrtf(powf(ringposition.x, 2) + powf(ringposition.y, 2));
+    xdistance -= ARM_DEFINE.claw_distance;
+    if (ringposition.y > 0)
+    {
+        ringangle = 180 + (atan_taylor(fabs(ringposition.y / ringposition.x)) / 3.1415926 * 180);
+    }
+    else
+        ringangle = 180 - (atan_taylor(fabs(ringposition.y / ringposition.x)) / 3.1415926 * 180);
+	
+	Point2f ret; // x：前伸量，y：旋转量
+	ret.x = xdistance, ret.y = ringangle;
+	
+	stepmotor_rotate(&ARM_DEFINE.motor_r, ringangle);
+	HAL_Delay(500);
+    stepmotor_move(&ARM_DEFINE.motor_x, xdistance);
+    stepmotor_move(&ARM_DEFINE.motor_z, z);
+#	endif
+	return ret;
 }
 
-//立即停止
-// 0--地址
-// 1--FE
-// 2--0x98
-// 3--多机同步
-// 4--6B
- uint8_t StepMotor_StopPacket[5]={0,0xFE,0x98,0,0x6B};
- void StepMotor_Stop(StepMotorStruct *motor)
- {
-	StepMotor_StopPacket[0]=motor->ID;
-	HAL_UART_Transmit(motor->huart, StepMotor_StopPacket, 5,1000);
- }
- 
-//读取电机状态
-// 0--地址
-// 1--0x3A
-// 2--0x6B
-// 到位标志位：0x03&0x02 =0x01=true
-uint8_t StepMotor_StatePacket[3]={0,0x3A,0x6B};
-void StepMotor_GetState(StepMotorStruct *motor)
+void arm_move_sync(void)
 {
-	StepMotor_StatePacket[0]=motor->ID;
-	HAL_UART_Transmit(motor->huart, StepMotor_StatePacket, 3,1000);
-}
-
-//步进电机时间计算
-int16_t StepMotor_Time(StepMotorStruct *motor)
-{
-	int16_t timeSec = (motor->Steps_Tar/(3200*(motor->Speed_Tar/60))*1000);
-	return timeSec;
-}
-
-int32_t Motor_TimeCNT[2];
-void StepMotor_Wait(StepMotorStruct *motor,uint8_t flag)
-{
-	if(flag==1)
-	{
-		Motor_TimeCNT[0]=Motor_TimeCNT[1];
-		while(motor->Step_Finish_Flag==0)
-		{
-			if(UART8_RxData[0]==1)
-			{
-				Motor_R.Step_Finish_Flag=1;
-			}
-			if(UART8_RxData[0]==2)
-			{
-				Motor_Z.Step_Finish_Flag=1;
-			}
-			if(UART8_RxData[0]==3)
-			{
-				Motor_X.Step_Finish_Flag=1;
-			}
-//			if(fabs(Motor_TimeCNT[0]-Motor_TimeCNT[1])>=5000)
-//			{
-//				memset(UART8_RxData, 0, sizeof(UART8_RxData));
-//				HAL_UART_Receive_IT(&huart8,UART8_RxData, 4);
-//				break;
-//			}
-		}
-		motor->Step_Running_Flag=0;
-	}
+    stepmotor_arrived(&ARM_DEFINE.motor_r);
+    stepmotor_arrived(&ARM_DEFINE.motor_x);
+    stepmotor_arrived(&ARM_DEFINE.motor_z);
 }
 
 /*
@@ -237,19 +311,18 @@ Z——最高处
 */
 void Arm_Scan(void)
 {
-	servor_ctl(servor_object_CLAW, 1);
-	Forward_Place_Control(0);
-	StepMotor_Wait(&Motor_X,WaitFlag);
-	//HAL_Delay(500);
-	StepMotor_ToStepData(&Motor_Z, StepMotor_Z_Position[0], MotorSpeed, 1);
-	StepMotor_ToStepControl(&Motor_Z);
-	StepMotor_Wait(&Motor_Z,WaitFlag);
-	//HAL_Delay(StepMotor_Time(&Motor_Z));
+    servor_ctl(servor_object_CLAW, 1);
+
+	stepmotor_move(&ARM_DEFINE.motor_z, StepMotor_Z_Position[0]);
+    stepmotor_arrived(&ARM_DEFINE.motor_z);
 	
-	StepMotor_ToStepData(&Motor_R, StepMotor_R_PlacePosition[0], MotorSpeed, 1);
-	StepMotor_ToStepControl(&Motor_R);
-	StepMotor_Wait(&Motor_R,WaitFlag);
-	//HAL_Delay(500);
+    stepmotor_move(&ARM_DEFINE.motor_x, StepMotor_Forward_Store[0]);
+    stepmotor_arrived(&ARM_DEFINE.motor_x);
+
+    
+
+    stepmotor_move(&ARM_DEFINE.motor_r, StepMotor_R_StorePosition[0]);
+    stepmotor_arrived(&ARM_DEFINE.motor_r);
 }
 
 /*
@@ -261,19 +334,15 @@ Z——最高
 */
 void Arm_Dtct(void)
 {
-	servor_ctl(servor_object_CLAW, 1);
-	Forward_Place_Control(0);
-	StepMotor_Wait(&Motor_X,WaitFlag);
-	//HAL_Delay(500);
-	
-	StepMotor_ToStepData(&Motor_Z, StepMotor_Z_Position[0], MotorSpeed, 1);
-	StepMotor_ToStepControl(&Motor_Z);
-	StepMotor_Wait(&Motor_Z,WaitFlag);
-	//HAL_Delay(500);
-	StepMotor_ToStepData(&Motor_R, StepMotor_R_PlacePosition[4], MotorSpeed, 1);
-	StepMotor_ToStepControl(&Motor_R);
-	StepMotor_Wait(&Motor_R,WaitFlag);
-	//HAL_Delay(500);
+    servor_ctl(servor_object_CLAW, 1);
+    stepmotor_move(&ARM_DEFINE.motor_x, StepMotor_Forward_Store[0]);
+    stepmotor_arrived(&ARM_DEFINE.motor_x);
+
+    stepmotor_move(&ARM_DEFINE.motor_r, StepMotor_R_StorePosition[4]);
+    stepmotor_arrived(&ARM_DEFINE.motor_r);
+
+    stepmotor_move(&ARM_DEFINE.motor_z, StepMotor_Z_Position[0]);
+    stepmotor_arrived(&ARM_DEFINE.motor_z);
 }
 
 /*
@@ -281,80 +350,113 @@ void Arm_Dtct(void)
 R——180
 Z——从圆盘上取
 */
-void Arm_PlateCapture(void)
+
+// vision_captureposition:5中下，6左上，7右上
+void Arm_PlateCapture(uint16_t vision_captureposition)
 {
-	Forward_Place_Control(Dtct2);
-	StepMotor_Wait(&Motor_X,WaitFlag);
-	
-	StepMotor_ToStepData(&Motor_R, StepMotor_R_PlacePosition[4], MotorSpeed, 1);
-	StepMotor_ToStepControl(&Motor_R);
-	StepMotor_Wait(&Motor_R,WaitFlag);
-	
-	StepMotor_ToStepData(&Motor_Z, StepMotor_Z_Position[1], MotorSpeed, 1);
-	StepMotor_ToStepControl(&Motor_Z);
-	StepMotor_Wait(&Motor_Z,WaitFlag);
+    stepmotor_rotate(&ARM_DEFINE.motor_r, StepMotor_R_StorePosition[vision_captureposition]);
+    stepmotor_arrived(&ARM_DEFINE.motor_r);
+
+    stepmotor_move(&ARM_DEFINE.motor_x, StepMotor_Forward_Store[vision_captureposition - 1]);
+    stepmotor_arrived(&ARM_DEFINE.motor_x);
+
+    stepmotor_move(&ARM_DEFINE.motor_z, StepMotor_Z_Position[1]);
+    stepmotor_arrived(&ARM_DEFINE.motor_z);
 }
+
+/*
+机械臂码垛位置
+*/
+// void Arm_Maduo_Position(ArmTarget color)
+// {
+// 	switch(color)
+// 	{
+// 		case Red2:
+// 			angle = Color_Vision_Position.red.angle;
+// 			forward = Color_Vision_Position.red.forward;
+// 			break;
+// 		case Green2:
+// 			angle = Color_Vision_Position.green.angle;
+// 			forward = Color_Vision_Position.green.forward;
+// 			break;
+// 		case Blue2:
+// 			angle = Color_Vision_Position.blue.angle;
+// 			forward = Color_Vision_Position.blue.forward;
+// 			break;
+// 		default:
+// 			angle=180;
+// 			forward=10;
+// 			break;
+// 	}
+// 	if(angle<=100 || angle>=260)
+// 	{
+// 		angle=180;
+// 	}
+// 	stepmotor_rotate(&ARM_DEFINE.motor_r, angle);
+//     stepmotor_arrived(&ARM_DEFINE.motor_r);
+//     stepmotor_move(&ARM_DEFINE.motor_x, forward);
+//     stepmotor_arrived(&ARM_DEFINE.motor_x);
+//     stepmotor_move(&ARM_DEFINE.motor_z, StepMotor_Z_Position[4]);
+//     stepmotor_arrived(&ARM_DEFINE.motor_z);
+// }
 
 /*
 机械臂将物料存放到对应存储机构
 */
 void Arm_Store(ArmTarget color)
 {
-	Forward_Store_Control(color);
-	StepMotor_Wait(&Motor_X,WaitFlag);
-	
-	StepMotor_ToStepData(&Motor_R, StepMotor_R_StorePosition[color], MotorSpeed, 1);
-	StepMotor_ToStepControl(&Motor_R);
-	StepMotor_Wait(&Motor_R,WaitFlag);
-	
-	StepMotor_ToStepData(&Motor_Z, StepMotor_Z_Position[5], MotorSpeed, 1);
-	StepMotor_ToStepControl(&Motor_Z);
-	StepMotor_Wait(&Motor_Z,WaitFlag);
+    stepmotor_move(&ARM_DEFINE.motor_z, 10);
+    stepmotor_arrived(&ARM_DEFINE.motor_z);
+    
+    stepmotor_move(&ARM_DEFINE.motor_x, StepMotor_Forward_Store[color]);
 
+    stepmotor_move(&ARM_DEFINE.motor_r, StepMotor_R_StorePosition[color]);
+    arm_move_sync();
+
+    stepmotor_move(&ARM_DEFINE.motor_z, StepMotor_Z_Position[5]);
+    stepmotor_arrived(&ARM_DEFINE.motor_z);
 }
 
 /*
-机械臂摆放物料到圆环里
+机械臂移动到圆环位置（死位置版本）
 */
 void Arm_GroundPlace(ArmTarget color)
 {
-	Forward_Place_Control(color);
-	StepMotor_Wait(&Motor_X,WaitFlag);
-	
-	StepMotor_ToStepData(&Motor_R, StepMotor_R_PlacePosition[color], MotorSpeed, 1);
-	StepMotor_ToStepControl(&Motor_R);
-	StepMotor_Wait(&Motor_R,WaitFlag);
-	
-	StepMotor_ToStepData(&Motor_Z, StepMotor_Z_Position[3], MotorSpeed, 1);
-	StepMotor_ToStepControl(&Motor_Z);
-	StepMotor_Wait(&Motor_Z,WaitFlag);
+    stepmotor_move(&ARM_DEFINE.motor_z, 10);
+    stepmotor_arrived(&ARM_DEFINE.motor_z);
+    
+    stepmotor_move(&ARM_DEFINE.motor_x, StepMotor_Forward_Place[color]);
+
+    stepmotor_move(&ARM_DEFINE.motor_r, StepMotor_R_PlacePosition[color]);
+    arm_move_sync();
+
+    stepmotor_move(&ARM_DEFINE.motor_z, StepMotor_Z_Position[2]);
+    stepmotor_arrived(&ARM_DEFINE.motor_z);
 }
 
-/*
-机械臂码垛
-*/
-void Arm_Maduo(ArmTarget color)
-{
-	Forward_Place_Control(color);
-	StepMotor_Wait(&Motor_X,WaitFlag);
-	
-	StepMotor_ToStepData(&Motor_R, StepMotor_R_PlacePosition[color], MotorSpeed, 1);
-	StepMotor_ToStepControl(&Motor_R);
-	StepMotor_Wait(&Motor_R,WaitFlag);
-	
-	StepMotor_ToStepData(&Motor_Z, StepMotor_Z_Position[color], MotorSpeed, 1);
-	StepMotor_ToStepControl(&Motor_Z);
-	StepMotor_Wait(&Motor_Z,WaitFlag);
-}
 
 /*
 Z轴归中
 */
 void Arm_Z_Middle(void)
 {
-	StepMotor_ToStepData(&Motor_Z, StepMotor_Z_Position[0], MotorSpeed, 1);
-	StepMotor_ToStepControl(&Motor_Z);
-	StepMotor_Wait(&Motor_Z,WaitFlag);
+    stepmotor_move(&ARM_DEFINE.motor_z, StepMotor_Z_Position[0]);
+    //	StepMotor_ToStepData(&ARM_DEFINE.motor_z, StepMotor_Z_Position[0], MotorSpeed, 1);
+    //	StepMotor_ToStepControl(&ARM_DEFINE.motor_z);
+    //	stepmotor_arrived(&ARM_DEFINE.motor_z,WaitFlag);
+}
+
+void Arm_X_Forward(void)
+{
+    stepmotor_move(&pARM_DEFINE->motor_x, 200);
+    stepmotor_move(&pARM_DEFINE->motor_z, 20);
+    stepmotor_rotate(&pARM_DEFINE->motor_r, 180);
+    arm_move_sync();
+}
+
+void Arm_X_Zip(void)
+{
+    stepmotor_move(&pARM_DEFINE->motor_x, 10);
 }
 
 /*--------------------------运行控制--------------------------------------*/
@@ -362,17 +464,19 @@ void Arm_Z_Middle(void)
 /*
 机械臂从圆盘抓取物料并存放
 */
-void Arm_Action_GetPlate(ArmTarget color)
+void Arm_Action_GetPlate(ArmTarget color, uint16_t vision_captureposition)
 {
-	servor_ctl(servor_object_CLAW, 1);	 // 张抓
-	Arm_PlateCapture();	 // 转到抓取位置
-	servor_ctl(servor_object_CLAW, 2); // 闭
-	HAL_Delay(300);
-	Arm_Z_Middle();	  // Z抬高
-	Arm_Store(color); // 摆放到存储机构
-	servor_ctl(servor_object_CLAW, 1); // 张抓
-	HAL_Delay(300);
-	Arm_Dtct();		// 归位为检测位置
+    servor_ctl(servor_object_CLAW, 1); // 张爪
+    Arm_PlateCapture(vision_captureposition);
+
+    arm_move_sync();
+    servor_ctl(servor_object_CLAW, 2); // 闭爪
+    HAL_Delay(300);
+
+    Arm_Z_Middle();					   // Z抬高
+    Arm_Store(color);				   // 摆放到存储机构
+    servor_ctl(servor_object_CLAW, 1); // 张爪
+    Arm_Dtct();						   // 归位为检测位置
 }
 
 /*
@@ -380,16 +484,47 @@ void Arm_Action_GetPlate(ArmTarget color)
 */
 void Arm_Action_Store_To_Ground(ArmTarget color)
 {
-	servor_ctl(servor_object_CLAW, 1);	 // 张爪
-	Arm_Z_Middle();		 // Z抬高
-	Arm_Store(color);	 // 移到存储处对应位置
-	servor_ctl(servor_object_CLAW, 2); // 闭
+    servor_ctl(servor_object_CLAW, 1);			  // 张爪
+	servor_ctl(servor_object_CLAW, 1);			  // 张爪
+
+    Arm_Store(color);							  // 移到存储处对应位置
+    servor_ctl(servor_object_CLAW, 2);            // 闭
+    servor_ctl(servor_object_CLAW, 2);            // 闭
+    HAL_Delay(300);
+    Arm_Z_Middle();								  // Z抬高
+
+    HAL_Delay(150);
+    Arm_X_Zip();
+    stepmotor_arrived(&ARM_DEFINE.motor_x);
+	stepmotor_arrived(&ARM_DEFINE.motor_z);
+    Point2f target = vision_get_ring(ARM_TARGET_COLOR_MAP[color]);
+    arm_ground_place(target, StepMotor_Z_Position[2]); // 移到对应圆环位置
+
+    servor_ctl(servor_object_CLAW, 1);			  // 张爪
+	servor_ctl(servor_object_CLAW, 1);			  // 张爪
 	HAL_Delay(300);
-	Arm_Z_Middle();			// Z抬高
-	Arm_GroundPlace(color); // 移到对应圆环位置
-	servor_ctl(servor_object_CLAW, 1);		// 张爪
-	HAL_Delay(300);
-	Arm_Z_Middle(); // Z抬高
+    Arm_X_Zip();
+    Arm_Z_Middle();								  // Z抬高
+}
+
+//方案二 死位置放置
+void Arm_Action_Store_To_Ground2(ArmTarget color)
+{
+    servor_ctl(servor_object_CLAW, 1);			  // 张爪
+    Arm_Store(color);							  // 移到存储处对应位置
+    servor_ctl(servor_object_CLAW, 2);            // 闭
+    HAL_Delay(300);
+    Arm_Z_Middle();								  // Z抬高
+    HAL_Delay(150);
+    Arm_X_Zip();
+    stepmotor_arrived(&ARM_DEFINE.motor_z);
+	
+    Arm_GroundPlace(color);
+
+    servor_ctl(servor_object_CLAW, 1);			  // 张爪
+    HAL_Delay(300);
+    Arm_X_Zip();
+    Arm_Z_Middle();								  // Z抬高
 }
 
 /*
@@ -397,16 +532,26 @@ void Arm_Action_Store_To_Ground(ArmTarget color)
 */
 void Arm_Action_Maduo(ArmTarget color)
 {
-	servor_ctl(servor_object_CLAW, 1);	 // 张爪
-	Arm_Z_Middle();		 // Z抬高
-	Arm_Store(color);	 // 移到对应存储机构位置
-	servor_ctl(servor_object_CLAW, 2); // 闭
-	HAL_Delay(300);
-	Arm_Z_Middle();		// Z抬高
-	Arm_Maduo(color);	// 移到对应码垛位置
-	servor_ctl(servor_object_CLAW, 1); // 张爪
-	HAL_Delay(300);
-	Arm_Z_Middle(); // Z抬高
+    servor_ctl(servor_object_CLAW, 1); // 张爪
+    Arm_Z_Middle();					   // Z抬高
+	Arm_X_Zip();
+	HAL_Delay(150);
+    Arm_Store(color);				   // 移到对应存储机构位置
+
+
+    servor_ctl(servor_object_CLAW, 2); // 闭
+	HAL_Delay(500);
+    Arm_Z_Middle();					   // Z抬高
+//	Arm_X_Zip();
+	HAL_Delay(150);
+    Point2f target = vision_get_ring(ARM_TARGET_COLOR_MAP[color]);
+    arm_ground_place(target, StepMotor_Z_Position[4]);
+    // Arm_Maduo_Position(color);				   // 移到对应码垛位置
+
+    servor_ctl(servor_object_CLAW, 1); // 张爪
+    HAL_Delay(500);
+    Arm_Z_Middle();					   // Z抬高
+	Arm_X_Zip();
 }
 
 /*
@@ -414,50 +559,70 @@ void Arm_Action_Maduo(ArmTarget color)
 */
 void Arm_Action_Ground_To_Store(ArmTarget color)
 {
-	servor_ctl(servor_object_CLAW, 1);		// 张爪
-	Arm_Dtct();				//移到检测位置
-	Arm_GroundPlace(color); // 移到对应圆环位置
-	servor_ctl(servor_object_CLAW, 2);	// 闭
-	HAL_Delay(1000);
-	Arm_Z_Middle();		// Z抬高
-	Arm_Store(color);	// 移到对应存储机构位置
-	servor_ctl(servor_object_CLAW, 1); // 张爪
-	HAL_Delay(1000);
-	Arm_Z_Middle(); // Z抬高
+    servor_ctl(servor_object_CLAW, 1);			  // 张爪
+    HAL_Delay(200);
+    Arm_Z_Middle();								  // Z抬高
+    Arm_X_Zip();
+
+    Point2f target = vision_get_ring(ARM_TARGET_COLOR_MAP[color]);
+    arm_ground_place(target, StepMotor_Z_Position[2]); // 移到对应圆环位置
+
+    servor_ctl(servor_object_CLAW, 2);			  // 闭
+
+    HAL_Delay(600);
+    Arm_Z_Middle();								  // Z抬高
+    Arm_X_Zip();
+    HAL_Delay(300);
+    Arm_Store(color);							  // 移到对应存储机构位置
+
+    servor_ctl(servor_object_CLAW, 1);			  // 张爪
+    HAL_Delay(300);
+    Arm_Z_Middle();								  // Z抬高
+    HAL_Delay(150);
+    Arm_X_Zip();
 }
 
 // 机械臂总控
 void Arm_Action(ArmAction action, ArmTarget color)
 {
-	switch (action)
-	{
-	case Ordinary3: // 一般位置
-		Arm_Dtct();
-		break;
-	case Scan: // 扫码位置
-		Arm_Scan();
-		break;
-	case Dtct: // 在圆盘上检测位置
-		Arm_Dtct();
-		break;
-	case Plate_To_Store: // 圆盘-->存储
-		Arm_Action_GetPlate(color);
-		break;
-	case Store_To_Ground: // 存储-->地面
-		Arm_Action_Store_To_Ground(color);
-		break;
-	case Ground_To_Store: // 地面-->存储
-		Arm_Action_Ground_To_Store(color);
-		break;
-	case Maduo: // 码垛
-		Arm_Action_Maduo(color);
-		break;
-	case Store_Open: // 存储机构开关
-		servor_ctl(servor_object_PLATES, 1);;
-		break;
-	case Store_Close:
-		servor_ctl(servor_object_PLATES, 2);;
-		break;
-	}
+    Point2f point;
+    switch (action)
+    {
+    case Ordinary3: // 一般位置
+        Arm_Dtct(); 
+        break;
+    case Scan: // 扫码位置
+        Arm_Scan();
+        break;
+    case Dtct: // 在圆盘上检测位置
+        Arm_Dtct();
+        break;
+    case Plate_To_Store:  // 圆盘-->存储
+        vision_subscribe_item((color_t)color);
+        vision_sync(ps_comm_type_ITEM_DETECT);
+        uint8_t visionpos = vision_info.item_detect;
+        Arm_Action_GetPlate(color,visionpos);// 移到对应存储机构位置
+                          //		Arm_Action_GetPlate(color);
+        break;
+    case Store_Scan:      // 存储扫描圆环
+        Arm_X_Forward();
+        break;
+    case Store_To_Ground: // 存储-->地面
+        Arm_Action_Store_To_Ground(color);
+        break;
+    case Ground_To_Store: // 地面-->存储
+        Arm_Action_Ground_To_Store(color); // Z抬高
+        break;
+    case Maduo: // 码垛
+        Arm_Action_Maduo(color);
+        break;
+    case Store_Open: // 存储机构开关
+        servor_ctl(servor_object_PLATES, 1);
+        ;
+        break;
+    case Store_Close:
+        servor_ctl(servor_object_PLATES, 2);
+        ;
+        break;
+    }
 }
-

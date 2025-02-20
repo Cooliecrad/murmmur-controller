@@ -4,10 +4,12 @@
 #include <stdbool.h>
 #include "stm32h7xx_hal.h"
 #include "ps_uart_v2.h"
+#include "coordinate.h"
 
 typedef struct
 {
-	float YawZ; // 原始的偏航角（未校正） -180~180
+	float YawExp; // 预期的当前偏航角
+	volatile float YawZ; // 原始的偏航角（未校正） -180~180
 	float Yaw_calib; // 偏航角的用户校准值
 	float WY;
 	float WZ;
@@ -54,11 +56,8 @@ void HWT101_update(void);
 /**
  * @brief 读取校准过的偏航角
  */
-inline float HWT101_read_yaw(void)
-{
-	return HWT101Data.YawZ + HWT101Data.Yaw_calib;
-}
-
+float HWT101_read_yaw(void);
+	
 /**
  * @brief 发送指令: 归零偏航角
  */

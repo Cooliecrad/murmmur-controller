@@ -16,11 +16,19 @@ typedef enum
     ps_comm_type_light_effect,       // 灯效
     ps_comm_type_button_info,        // 按键
     ps_comm_type_battery_info,       // 电池信息
-    ps_comm_type_scan_qr,            // 扫描二维码
-    ps_comm_type_color_detect,   // 物体颜色检测
-    ps_comm_type_ring_pos_detect,  // 色环中心位置检测
-    ps_comm_type_ring_angle_detect,  // 色环角度检测
-    ps_comm_type_select_ring,  // 色环中心位置检测
+
+    ps_comm_type_SCAN_QR,  // 扫码
+    ps_comm_type_ITEM_DETECT, // 位置中心
+    ps_comm_type_POS_DETECT, // 位姿误差
+    ps_comm_type_RING_POS, // 圆环位置
+
+    ps_comm_type_IDLE_REQ = 0x81, // 请求视觉进入空闲状态
+    
+    ps_comm_type_SCAN_QR_REQ = 0x88, // 扫描二维码
+    ps_comm_type_ITEM_DETECT_REQ = 0x89, // 位置中心检测
+    ps_comm_type_POS_DETECT_REQ = 0x8A,   // 位置误差检测
+    ps_comm_type_RING_POS_REQ = 0x8B, /// 圆环位置
+
     ps_comm_type_error = 0xff // 无效类型
 } ps_comm_type_t;
 
@@ -102,15 +110,21 @@ typedef struct
 typedef struct
 {
     uint8_t addr;
-    uint32_t color;
-} ps_comm_color_detect_t;
+    uint8_t color;
+} ps_comm_item_detect_req_t;
 
 typedef struct
 {
     uint8_t addr;
-    int16_t x;
-    int16_t y;
-} ps_comm_ring_pos_vision_t;
+    uint8_t color;
+    uint8_t pos;
+} ps_comm_item_detect_t;
+
+typedef struct
+{
+    uint8_t addr;
+    uint8_t pos;
+} ps_comm_pos_detect_req_t;
 
 typedef struct
 {
@@ -118,13 +132,22 @@ typedef struct
     float angle;
     int16_t x;
     int16_t y;
-} ps_comm_ring_angle_detect_t;
+} ps_comm_pos_detect_t;
 
 typedef struct
 {
     uint8_t addr;
     uint8_t color;
-} ps_comm_ring_pos_controller_t;
+} ps_comm_ring_pos_req_t;
+
+typedef struct
+{
+    uint8_t addr;
+    uint8_t color;
+    int16_t x;
+    int16_t y;
+} ps_comm_ring_pos_t;
+
 
 typedef union
 {
@@ -138,10 +161,12 @@ typedef union
     ps_comm_button_info_t button;
     ps_comm_battery_info_t battery;
     ps_comm_scan_qr_t scan_qr;
-    ps_comm_color_detect_t item_color;
-    ps_comm_ring_pos_vision_t ring_center;
-    ps_comm_ring_angle_detect_t ring_angle;
-    ps_comm_ring_pos_controller_t select_ring;
+    ps_comm_item_detect_t item_detect;
+    ps_comm_item_detect_req_t item_detect_req;
+    ps_comm_pos_detect_req_t pos_detect_req;
+    ps_comm_pos_detect_t pos_detect;
+    ps_comm_ring_pos_req_t ring_pos_req;
+    ps_comm_ring_pos_t ring_pos;
 } PsCommFrame;
 
 typedef struct

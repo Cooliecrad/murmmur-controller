@@ -189,22 +189,62 @@ HAL_StatusTypeDef emm42_reset(emm42_handle_t handle)
     return HAL_UART_Transmit_DMA(handle->ps_uart_handle->pHUART, BUFFER, sizeof(BUFFER));
 }
 
-HAL_StatusTypeDef emm42_response(emm42_handle_t handle, uint8_t addr, bool reached)
+/**
+ * @brief 从步进电机中读取驱动参数
+ * @note 和__emm42_write_drive_config()配合使用
+ */
+void __emm42_read_drive_config(emm42_handle_t handle, uint8_t addr,
+                               emm42_v5_drive_t *rx)
+{
+    /**
+     * @note 有意思的地方：收发的实际数据包一样大，所以可以通用
+     */
+    // 暂停接收
+    ps_uart_stop(handle->ps_uart_handle);
+
+    rx->dummy[0] = addr;
+    rx->dummy[1] = 0x42;
+    rx->dummy[2] = 0x6C;
+    rx->dummy[3] = CHECKSUM(rx, 4);
+    HAL_UART_Transmit_DMA(handle->ps_uart_handle->pHUART, (uint8_t*)rx, 4);
+    HAL_UART_Receive(handle->ps_uart_handle->pHUART, (uint8_t*)rx,
+                     sizeof(emm42_v5_drive_t), HAL_MAX_DELAY);
+}
+
+/**
+ * @brief 从步进电机中写入参数
+ * @note 和__emm42_read_drive_config()配合使用
+ */
+void __emm42_write_drive_config(emm42_handle_t handle, uint8_t addr,
+                                emm42_v5_drive_t *tx)
+{
+    // 修改参数
+    tx->tx.addr = addr;
+    tx->tx.cmd[0] = 0x48;
+    tx->tx.cmd[1] = 0xD1;
+    tx->tx._0x01 = 0x01;
+    HAL_UART_Transmit_DMA(handle->ps_uart_handle->pHUART, (uint8_t*)tx, sizeof(emm42_v5_drive_t));
+    ps_uart_init(handle->ps_uart_handle); // 重新启动ps_uart的循环接收
+}
+
+void emm42_set_response(emm42_handle_t handle, uint8_t addr, bool reached)
 {
     emm42_received(handle);
 
-    static uint8_t BUFFER[] = {
-        0x00, 0x48, 0xD1, 0x01, 0x19, 0x02, 0x02, 0x02, 0x01, 0x10,
-        0x01, 0x00, 0x03, 0xE8, 0x09, 0x60, 0x13, 0x88, 0x07, 0x07,
-        0x00, 0x00, 0x00, 0x01, 0x00, 0x08, 0x08, 0x98, 0x07, 0xD0,
-        0x00, 0x05, 0x6B
-    };
-    BUFFER[0] = addr;
-    BUFFER[22] = reached ? 3 : 1;
-    BUFFER[sizeof(BUFFER)-1] = CHECKSUM(BUFFER, sizeof(BUFFER));
+    static emm42_v5_drive_t BUFFER;
+    __emm42_read_drive_config(handle, addr, &BUFFER);
+    BUFFER.tx.config.Response = reached ? 3 : 1;
+    __emm42_write_drive_config(handle, addr, &BUFFER);
+}
 
-    handle->instance.received = false;
-    return HAL_UART_Transmit_DMA(handle->ps_uart_handle->pHUART, BUFFER, sizeof(BUFFER));
+void emm42_set_reach_wnd(emm42_handle_t handle, uint8_t addr, uint16_t deg)
+{
+    emm42_received(handle);
+
+    static emm42_v5_drive_t BUFFER;
+    __emm42_read_drive_config(handle, addr, &BUFFER);
+    BUFFER.tx.config.reach_wnd = deg;
+    __emm42_write_drive_config(handle, addr, &BUFFER);
 }
 
 void emm42_arrived(emm42_handle_t handle, uint8_t addr)

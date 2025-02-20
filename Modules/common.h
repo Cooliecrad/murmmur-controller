@@ -61,6 +61,4 @@ typedef struct
     double y;
 } Point2d;
 
-
-
 #endif

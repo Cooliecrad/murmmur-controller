@@ -13,7 +13,7 @@ uint8_t CHASSIS_RECV_BUFFER0[4];
 uint8_t CHASSIS_RECV_BUFFER1[4];
 uint8_t CHASSIS_RECV_BUFFER2[4];
 
-emm42_handle_t chassis_uart_handle;
+emm42_handle_t chassis_emm42_handle;
 
 const static int TX_DELAY_INTERVAL = 1; // 发送之间等待的间隔
 
@@ -37,7 +37,7 @@ static inline uint16_t velocity_to_rpm(chassis_def_t *cd, float v)
 
 void chassic_ctl_init(UART_HandleTypeDef *pHUART, chassis_def_t define)
 {
-    chassis_uart_handle = &CHASSIS_UART;
+    chassis_emm42_handle = &CHASSIS_UART;
 
     // 初始化串口
     CHASSIS_PS_UART.buffer[0] = CHASSIS_RECV_BUFFER0;
@@ -49,18 +49,20 @@ void chassic_ctl_init(UART_HandleTypeDef *pHUART, chassis_def_t define)
     CHASSIS_UART.ps_uart_handle = &CHASSIS_PS_UART;
     // 初始化底盘控制
     CH_DEFINE = define;
-    emm42_v5_init(chassis_uart_handle);
+    emm42_v5_init(chassis_emm42_handle);
     // 初始化底盘电机
-    emm42_set_state(chassis_uart_handle, 0, 1, 0);
-    emm42_reset(chassis_uart_handle);
-    emm42_halt(chassis_uart_handle, 0, 0);
-    emm42_response(chassis_uart_handle, 0, false);
+    emm42_set_state(chassis_emm42_handle, 0, 1, 0);
+    emm42_reset(chassis_emm42_handle);
+    emm42_halt(chassis_emm42_handle, 0, 0);
+    // emm42_set_response(chassis_emm42_handle, 0, false);
+    // emm42_set_reach_wnd(chassis_emm42_handle, 0, 1);
 }
 
 void chassic_pos_ctl(chassis_pos_ctl_t *ctl)
 {
     // 将距离转化成脉冲和方向
     static uint32_t pulse[CHASSIS_MOTOR];
+    static uint16_t speed[CHASSIS_MOTOR];
     static uint8_t dir[CHASSIS_MOTOR];
     
     int moved = -1; // 地址最小的且移动的电机
@@ -80,13 +82,13 @@ void chassic_pos_ctl(chassis_pos_ctl_t *ctl)
     {
         if (pulse[index])
         {
-            emm42_pos_ctl(chassis_uart_handle, index+CHASSIS_ADDR_SHIFT,
+            emm42_pos_ctl(chassis_emm42_handle, index+CHASSIS_ADDR_SHIFT,
                         dir[index], ctl->speed,
                         ctl->acc, pulse[index], ctl->abs, 1);
         }
     }
     // 设置同步
-    emm42_sync(chassis_uart_handle);
+    emm42_sync(chassis_emm42_handle);
 }
 
 void chassis_speed_ctl(chassis_spd_ctl_t *ctl)
@@ -97,7 +99,7 @@ void chassis_speed_ctl(chassis_spd_ctl_t *ctl)
         uint8_t dir = ctl->speed[index] >= 0 ? chassis_direction_FWD
                                              : chassis_direction_BAK;
         uint16_t spd = velocity_to_rpm(&CH_DEFINE, ctl->speed[index]);
-        emm42_speed_ctl(chassis_uart_handle, index+CHASSIS_ADDR_SHIFT,
+        emm42_speed_ctl(chassis_emm42_handle, index+CHASSIS_ADDR_SHIFT,
                         dir, spd, ctl->acc, 0);
     }
 }
@@ -105,5 +107,5 @@ void chassis_speed_ctl(chassis_spd_ctl_t *ctl)
 void chassis_arrived(void)
 {
     if (LAST_REACHED != 0)
-        emm42_arrived(chassis_uart_handle, LAST_REACHED);
+        emm42_arrived(chassis_emm42_handle, LAST_REACHED);
 }

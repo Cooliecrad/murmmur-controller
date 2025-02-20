@@ -18,8 +18,7 @@
 const static float CHASSIS_PITCH_A = 0.11; // 底盘的短轴长度的一半
 const static float CHASSIS_PITCH_B = 0.12; // 底盘的长轴长度的一半
 const static float ROTATE_TIMES = 1.45; // 旋转的空程
-const static float ROTATE_THRESHOLD = 0.05; // 可接受的角度误差
-
+const static float ROTATE_THRESHOLD = 0.5; // 可接受的角度误差
 
 #define Division 16
 chassis_t CHASSIS;
@@ -28,18 +27,6 @@ chassis_t CHASSIS;
  * @brief 麦轮运动解算
  * -----------------------------------------------------------------------------
  */
-
-/**
- * @brief 从 [-360,360] 转化到 [-180~180]
- * @note 如果是(-∞, +∞)，建议使用fmodf(angle, 180.)
- */
-static inline float angle_normal(float angle)
-{
-    if (angle > 180) return 360-angle;
-    else if (angle < -180) return 360+angle;
-    return angle;
-}
-
 /**
  * @description: 逆运动分解
  * @param {ChassisTypeDef} *chassis
@@ -116,8 +103,14 @@ void chassis_move(uint8_t acc, uint16_t speed, Point2f dst)
 
 void chassis_shift(uint8_t acc, uint16_t speed, Point2f dst)
 {
-    dst = coordinate_transform_Z_rotate(dst, HWT101_read_yaw());
+    dst = coordinate_transform_Z_rotate(dst, HWT101Data.YawExp);
     chassis_move(acc, speed, dst);
+}
+
+void chassis_to(uint8_t acc, uint16_t speed, Point2f dst)
+{
+    Point2f new_dst = coordinate_transform_Z_rotate(dst, -90);
+    chassis_move_abs(acc, speed, new_dst);
 }
 
 void chassis_move_abs(uint8_t acc, uint16_t speed, Point2f dst)
@@ -125,7 +118,8 @@ void chassis_move_abs(uint8_t acc, uint16_t speed, Point2f dst)
     Pose2f pose;
     pose.xy = CHASSIS.pos;
     pose.angle = HWT101_read_yaw();
-    dst = coordinate_transform_reverse(dst, pose); // 逆解算出HWT101_read_yaw相对移动
+    CHASSIS.pos = dst;
+    dst = coordinate_transform(dst, pose); // 逆解算出HWT101_read_yaw相对移动
     chassis_move(acc, speed, dst);
 }
 
@@ -151,17 +145,18 @@ void chassis_rotate(uint8_t acc, uint16_t speed, float angle)
     chassic_pos_ctl(&pos_ctl);
 }
 
+float ch_angle;
 void chassis_rotate_abs(uint8_t acc, uint16_t speed, float angle)
 {
     // 读取出角度
-    float ch_angle;
     ch_angle = angle_normal(angle - HWT101_read_yaw());
     while (fabs(ch_angle) > ROTATE_THRESHOLD)
     {
-        chassis_rotate(acc, speed, ch_angle);
+        chassis_rotate(200, 800, ch_angle);
         chassis_arrived();
         ch_angle = angle_normal(angle - HWT101_read_yaw());
     }
+//    HWT101_calibrate(angle);
 }
 
 // void Chassis_Movedistance(ChassisTypeDef *chassis, uint8_t acc,uint16_t speed ,float x,float y)

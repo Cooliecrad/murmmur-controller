@@ -14,4 +14,14 @@ const static ArmTarget COLOR_ARM_TARGET_MAP[] = {
     Blue2,      // color_blue -> Blue2
 };
 
+/**
+ * @brief 将ArmTarget映射到color
+ */
+const static color_t ARM_TARGET_COLOR_MAP[] = {
+    color_none,
+    color_red,
+    color_green,
+    color_blue
+};
+
 #endif

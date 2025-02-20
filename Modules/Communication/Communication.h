@@ -11,6 +11,7 @@
 #ifndef __COMMUNICATION_H__
 #define __COMMUNICATION_H__
 
+#include <math.h>
 #include "common.h"
 
 #define printfUART USART1

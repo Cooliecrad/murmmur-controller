@@ -25,7 +25,10 @@ typedef struct
 
 } ps_uart_instance_t;
 
-
+/**
+ * @brief ps_uart使用的结构体
+ * @note 除了instance，其他的成员变量必须用户在初始化前填入
+ */
 typedef struct
 {
     // 三个缓冲区长度必须等于recv_length
@@ -44,9 +47,18 @@ extern "C" {
 #endif
 
 /**
- * @brief 初始化UART
+ * @brief 初始化ps_uart的循环接收模式
  */
 void ps_uart_init(ps_uart_handle_t handle);
+
+/**
+ * @brief 停止ps_uart的循环接收模式，允许用户自己接收数据
+ * @note 只能使用非中断的方式接收数据，也就是说只能用HAL_UART_Receive()
+ */
+inline void ps_uart_stop(ps_uart_handle_t handle)
+{
+    HAL_UART_DMAStop(handle->pHUART);
+}
 
 /**
  * @brief 阻塞的发送数据
@@ -105,7 +117,12 @@ void ps_uart_receive_IDLE_IT(ps_uart_handle_t handle);
 /**
  * @brief 辅助函数，计算累加校验和（按字节累加）
  */
-uint8_t ps_uart_sigma_check_sum(uint8_t *frame, int len);
+inline uint8_t ps_uart_sigma_check_sum(uint8_t *frame, int len)
+{
+    uint8_t sum = 0;
+    for (int x=0; x<len; x++) sum += frame[x];
+    return sum;
+}
 
 #ifdef __cplusplus
 }

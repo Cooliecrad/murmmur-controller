@@ -19,7 +19,7 @@ uint8_t UART1_RxData;
 // uint8_t UART2_RxData;
 uint8_t UART3_RxData;
 uint8_t UART4_RxData;
-uint8_t UART8_RxData[4];
+// uint8_t UART8_RxData[4];
 
 //RxPacketTypedef LanYaPacket;
 // RxPacketTypedef HWT101_RxPacket;
@@ -56,7 +56,7 @@ void Communication_Start(void)
 	// HAL_UART_Receive_IT(&huart3,&UART3_RxData, 1);
 	// HAL_UART_Receive_IT(&huart2,&UART2_RxData,1);
 	HAL_UART_Receive_IT(&huart4,&UART4_RxData, 1);
-	HAL_UART_Receive_IT(&huart8,UART8_RxData, 4);
+	// HAL_UART_Receive_IT(&huart8,UART8_RxData, 4);
 	
 }
 void Communication_PacketInit(void)
@@ -65,18 +65,18 @@ void Communication_PacketInit(void)
 //	LanYaPacket.Head[0]=0XA5;
 	// HWT101_RxPacket.Head[0]=0X55;
 //	QR_CodePacket.Head[0]=0X51;
-	stepmotor_rxpacket.Head[0]=0x03;
-	stepmotor_rxpacket.Head[1]=0xFD;
-	stepmotor_rxpacket2.Head[0]=0x04;
-	stepmotor_rxpacket2.Head[1]=0xFD;
-	stepmotor_rxpacket.Tail[0]=0x6B;
-	stepmotor_rxpacket2.Tail[0]=0x6B;
+	// stepmotor_rxpacket.Head[0]=0x03;
+	// stepmotor_rxpacket.Head[1]=0xFD;
+	// stepmotor_rxpacket2.Head[0]=0x04;
+	// stepmotor_rxpacket2.Head[1]=0xFD;
+	// stepmotor_rxpacket.Tail[0]=0x6B;
+	// stepmotor_rxpacket2.Tail[0]=0x6B;
 	
 	
 	// PacketStructInit(&HWT101_RxPacket,10,0,1,0);
 	
-	PacketStructInit(&stepmotor_rxpacket,1,1,2,1);
-	PacketStructInit(&stepmotor_rxpacket2,1,1,2,1);
+	// PacketStructInit(&stepmotor_rxpacket,1,1,2,1);
+	// PacketStructInit(&stepmotor_rxpacket2,1,1,2,1);
 
 
 }
@@ -112,29 +112,29 @@ if(huart==&huart4)
 }
 }
 
-void UART8_RxCallback(UART_HandleTypeDef *huart)
-{
-	if(huart==&huart8)
-	{
-		if(UART8_RxData[1]==0xFD && UART8_RxData[2]==0x9F && UART8_RxData[3]==0x6B)
-		{
-			if(UART8_RxData[0]==1)
-			{
-				Motor_R.Step_Finish_Flag=1;
-			}
-			if(UART8_RxData[0]==2)
-			{
-				Motor_Z.Step_Finish_Flag=1;
-			}
-			if(UART8_RxData[0]==3)
-			{
-				Motor_X.Step_Finish_Flag=1;
-			}
-			memset(UART8_RxData, 0, sizeof(UART8_RxData));
-		}
-		HAL_UART_Receive_IT(&huart8,UART8_RxData, 4);
-}
-}
+// void UART8_RxCallback(UART_HandleTypeDef *huart)
+// {
+// 	if(huart==&huart8)
+// 	{
+// 		if(UART8_RxData[1]==0xFD && UART8_RxData[2]==0x9F && UART8_RxData[3]==0x6B)
+// 		{
+// 			if(UART8_RxData[0]==1)
+// 			{
+// 				Motor_R.Step_Finish_Flag=1;
+// 			}
+// 			if(UART8_RxData[0]==2)
+// 			{
+// 				Motor_Z.Step_Finish_Flag=1;
+// 			}
+// 			if(UART8_RxData[0]==3)
+// 			{
+// 				Motor_X.Step_Finish_Flag=1;
+// 			}
+// 			memset(UART8_RxData, 0, sizeof(UART8_RxData));
+// 		}
+// 		HAL_UART_Receive_IT(&huart8,UART8_RxData, 4);
+// }
+// }
 
 //5������ư�01 45
 //6��ݮ��
@@ -150,7 +150,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 //	UART1_RxCallback(huart);
 	// UART3_RxCallback(huart);
 	UART4_RxCallback(huart);
-	UART8_RxCallback(huart);
+	// UART8_RxCallback(huart);
 	Communication_Start();
 }
 

@@ -4,52 +4,29 @@
 
 // 爪子——4
 float CLAW_ANGLE[] = {
-    110.0f, // 一般状态
-    110.0f, // 开
-    25.0f,  // 关
-    23.0f   // 完全关闭
+    90.0f, // 一般状态
+    90.0f, // 开
+    21.0f,  // 关
+    21.0f   // 完全关闭
 };
-servor_t CLAW_SERVOR = {.Num = 4, .Time = ServorSpeed, .angle = CLAW_ANGLE};
+servor_t CLAW_SERVOR = {.Num = 7, .Time = ServorSpeed, .angle = CLAW_ANGLE};
 
-//// 前伸舵机——1
-// servor_t Forward_Store = {
-//	.Num = 1,
-//	.Time = ServorSpeed,
-//	//数值增大是往回缩
-//	.Angle = {
-//		144,	// 一般状态——d=0mm
-//		90.0f, // 红
-//		143.5,	// 绿
-//		143.5f, // 蓝
-//		100.0f, // 取圆盘上物块的位置
-//		75.0f	// 完全伸出——d=115mm
-//	}};
-//// 摆放
-// servor_t Forward_Place = {
-//	.Num = 1,
-//	.Time = ServorSpeed,
-//	.Angle = {
-//		144,		// 一般状态
-//		85.0f, // 红
-//		125.0f,	// 绿
-//		95.0f, // 蓝
-//	}};
 
 // 左存储——0
 float PLATE_LEFT_ANGLE[] = {
     170.0f, // 一般状态——减小则外展
-    120.0f, // 开
+    80.0f, // 开
     170.0f  // 关
 };
-servor_t Plate_L = {.Num = 0, .Time = ServorSpeed, .angle = PLATE_LEFT_ANGLE};
+servor_t Plate_L = {.Num = 0, .Time = 700, .angle = PLATE_LEFT_ANGLE};
 
 // 右存储——1
 float PLATE_RIGHT_ANGLE[] = {
     0.0f,  // 一般状态
-    51.0f, // 开
+    96.f, // 开
     0.0f   // 关
 };
-servor_t Plate_R = {.Num = 1, .Time = ServorSpeed, .angle = PLATE_RIGHT_ANGLE};
+servor_t Plate_R = {.Num = 1, .Time = 700, .angle = PLATE_RIGHT_ANGLE};
 
 // 伸长舵机
 // 存储
@@ -81,6 +58,8 @@ void servor_ctl_init(UART_HandleTypeDef *pHUART)
 
 void servor_ctl(servor_object_t object, int state)
 {
+    arm_move_sync();
+    HAL_Delay(500);
     switch (object)
     {
     case servor_object_CLAW:

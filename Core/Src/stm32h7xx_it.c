@@ -25,6 +25,7 @@
 #include "vision.h"
 #include "HWT101.h"
 #include "chassis_ctl.h"
+#include "Arm.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -65,6 +66,8 @@ extern TIM_HandleTypeDef htim3;
 extern TIM_HandleTypeDef htim4;
 extern TIM_HandleTypeDef htim5;
 extern DMA_HandleTypeDef hdma_uart5_tx;
+extern DMA_HandleTypeDef hdma_uart8_rx;
+extern DMA_HandleTypeDef hdma_uart8_tx;
 extern DMA_HandleTypeDef hdma_usart2_tx;
 extern DMA_HandleTypeDef hdma_usart2_rx;
 extern DMA_HandleTypeDef hdma_usart3_rx;
@@ -272,7 +275,7 @@ void DMA1_Stream3_IRQHandler(void)
   /* USER CODE END DMA1_Stream3_IRQn 0 */
   HAL_DMA_IRQHandler(&hdma_usart2_rx);
   /* USER CODE BEGIN DMA1_Stream3_IRQn 1 */
-  ps_uart_receive_DMA_IT(chassis_uart_handle->ps_uart_handle);
+  ps_uart_receive_DMA_IT(chassis_emm42_handle->ps_uart_handle);
   /* USER CODE END DMA1_Stream3_IRQn 1 */
 }
 
@@ -394,7 +397,7 @@ void USART1_IRQHandler(void)
 void USART2_IRQHandler(void)
 {
   /* USER CODE BEGIN USART2_IRQn 0 */
-  ps_uart_receive_IDLE_IT(chassis_uart_handle->ps_uart_handle);
+  ps_uart_receive_IDLE_IT(chassis_emm42_handle->ps_uart_handle);
   /* USER CODE END USART2_IRQn 0 */
   HAL_UART_IRQHandler(&huart2);
   /* USER CODE BEGIN USART2_IRQn 1 */
@@ -459,12 +462,40 @@ void UART5_IRQHandler(void)
 }
 
 /**
+  * @brief This function handles DMA2 stream0 global interrupt.
+  */
+void DMA2_Stream0_IRQHandler(void)
+{
+  /* USER CODE BEGIN DMA2_Stream0_IRQn 0 */
+
+  /* USER CODE END DMA2_Stream0_IRQn 0 */
+  HAL_DMA_IRQHandler(&hdma_uart8_rx);
+  /* USER CODE BEGIN DMA2_Stream0_IRQn 1 */
+  ps_uart_receive_DMA_IT(arm_emm42_handle->ps_uart_handle);
+  /* USER CODE END DMA2_Stream0_IRQn 1 */
+}
+
+/**
+  * @brief This function handles DMA2 stream1 global interrupt.
+  */
+void DMA2_Stream1_IRQHandler(void)
+{
+  /* USER CODE BEGIN DMA2_Stream1_IRQn 0 */
+
+  /* USER CODE END DMA2_Stream1_IRQn 0 */
+  HAL_DMA_IRQHandler(&hdma_uart8_tx);
+  /* USER CODE BEGIN DMA2_Stream1_IRQn 1 */
+
+  /* USER CODE END DMA2_Stream1_IRQn 1 */
+}
+
+/**
   * @brief This function handles USART6 global interrupt.
   */
 void USART6_IRQHandler(void)
 {
   /* USER CODE BEGIN USART6_IRQn 0 */
-
+  ps_uart_receive_IDLE_IT(vision_uart_handle);
   /* USER CODE END USART6_IRQn 0 */
   HAL_UART_IRQHandler(&huart6);
   /* USER CODE BEGIN USART6_IRQn 1 */
@@ -492,7 +523,7 @@ void UART7_IRQHandler(void)
 void UART8_IRQHandler(void)
 {
   /* USER CODE BEGIN UART8_IRQn 0 */
-
+  ps_uart_receive_IDLE_IT(arm_emm42_handle->ps_uart_handle);
   /* USER CODE END UART8_IRQn 0 */
   HAL_UART_IRQHandler(&huart8);
   /* USER CODE BEGIN UART8_IRQn 1 */

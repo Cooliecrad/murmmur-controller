@@ -12,7 +12,7 @@
 
 const static int CHASSIS_MOTOR = 4; // 电机的数量
 const static int CHASSIS_ADDR_SHIFT = 1; // 电机地址开始地址
-extern emm42_handle_t chassis_uart_handle; // 底盘控制使用的步进电机驱动句柄
+extern emm42_handle_t chassis_emm42_handle; // 底盘控制使用的步进电机驱动句柄
 
 /**
  * @brief 底盘的定义
