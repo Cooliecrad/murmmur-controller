@@ -39,6 +39,7 @@
 #include "Chassis.h"
 #include "using_PID.h"
 #include "Arm.h"
+#include "arm_calibrate.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -46,7 +47,7 @@
 #define locationtime 200
 #define shorttime 4000
 #define angletime 1000
-
+bool INITALIZED = false;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -190,28 +191,13 @@ int main(void)
     PID_Init(&PID_LOCATION_JUST_Y, PID_mode_PID, 1, 0.2, 0.0005, 0.1, 100, 0, 2);
 
     chassis_init(&huart2);
-    // Screwrod_Blockage_protection_Disable(&Chassis);
-
-    // StepMotor_ToStepData(&pARM_DEFINE->motor_r,0,9600,1);
-    // StepMotor_ToStepData(&Motor_Z,0,9600,1);
-    // StepMotor_ToStepControl(&pARM_DEFINE->motor_r);
-    // StepMotor_ToStepControl(&Motor_Z);
 
     HAL_GPIO_WritePin(GPIOE, GPIO_PIN_5, GPIO_PIN_SET);
-    // uint8_t BTCommandArry[5] = {0XFF, 0XAA, 0X04, 0X02, 0X00};
-    // uint8_t ULockCommandArry[5] = {0XFF, 0XAA, 0X69, 0X88, 0XB5};
-    // uint8_t LockCommandArry[5] = {0XFF, 0XAA, 0X00, 0X00, 0X00};
-
-    // HAL_UART_Transmit(&huart3, ULockCommandArry, 5, 1000);
-    // HAL_Delay(1000);
-    // HAL_UART_Transmit(&huart3, BTCommandArry, 5, 1000);
-    // HAL_Delay(1000);
-    // HAL_UART_Transmit(&huart3, LockCommandArry, 5, 1000);
-    // HAL_Delay(1000);
     /* USER CODE END 2 */
 
     /* Infinite loop */
     /* USER CODE BEGIN WHILE */
+    INITALIZED = true;
     while (1)
     {
         if (arm_test_flag == 1) // 设置角度
@@ -253,7 +239,24 @@ int main(void)
             arm_test_flag = 0;
         } else if (arm_test_flag == 7)
         {
-            arm_ground_place(visionpositiontest, StepMotor_Z_Position[2]);
+            Point3f target = {.x = visionpositiontest.x, .y = visionpositiontest.y,
+                              .z = StepMotor_Z_Position[2]};
+            arm_ground_place(&target, true);
+            arm_test_flag = 0;
+        } else if (arm_test_flag == 8) // 失能机械臂，供用户校准
+        {
+            arm_set_state(false);
+            servor_ctl(servor_object_CLAW, 1, false);
+            servor_ctl(servor_object_PLATES, 1, false);
+            arm_test_flag = 0;
+        } else if (arm_test_flag == 9) // 校准机械臂
+        {
+            arm_calibrate(pARM_DEFINE);
+            arm_set_state(true);
+            arm_test_flag = 0;
+        } else if (arm_test_flag == 10)
+        {
+            arm_position_update();
             arm_test_flag = 0;
         }
 
@@ -264,7 +267,15 @@ int main(void)
         }
         else if (servorflag == 2)
         {
-            servor_rotate(time, 6, clawangle);
+            servor_rotate(time, 7, clawangle);
+            servorflag = 0;
+        } else if (servorflag == 3) // 机械爪开
+        {
+            servor_ctl(servor_object_CLAW, 0, false);
+            servorflag = 0;
+        } else if (servorflag == 4)
+        {
+            servor_ctl(servor_object_CLAW, 1, false);
             servorflag = 0;
         }
 
@@ -339,8 +350,6 @@ int main(void)
 
         if (debugflag == 1)
         {
-            //		Arm_Action(Dtct,0);
-            //		HAL_Delay(4000);
             my_debug(flag);
             debugflag = 0;
         }

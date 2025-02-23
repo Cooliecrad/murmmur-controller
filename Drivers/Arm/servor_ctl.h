@@ -1,4 +1,5 @@
 #include "servor.h"
+#include <stdbool.h>
 
 /**
  * @brief 具体舵机控制
@@ -30,8 +31,9 @@ void servor_ctl_init(UART_HandleTypeDef *pHUART);
  * @brief 控制舵机
  * @param object 要控制的舵机组
  * @param state 要设置成的状态
+ * @param sync 是否等待舵机运动到指定位置
  */
-void servor_ctl(servor_object_t object, int state);
+void servor_ctl(servor_object_t object, int state, bool sync);
 
 #ifdef __cplusplus
 }

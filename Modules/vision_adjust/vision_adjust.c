@@ -27,7 +27,9 @@ void vision_calibrate_gyro(float target)
 Pose2f speed;
 void vision_adjust_chassis(uint8_t pos, const Pose2f *target)
 {
-    stepmotor_rotate(&pARM_DEFINE->motor_r, 180);
+    stepmotor_rotate(&pARM_DEFINE->motor_r, -180);
+    arm_move_sync();
+
     // 等待获取视觉数据
     vision_subscribe_pos(pos);
     vision_sync(ps_comm_type_POS_DETECT);

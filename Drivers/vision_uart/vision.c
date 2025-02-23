@@ -95,11 +95,17 @@ void vision_subscribe_pos(uint8_t pos)
     __vision_subscribe(&TX_BUFFER);
 }
 
-void vision_subscribe_item(color_t item)
+void vision_item_detect_stop()
+{
+    vision_subscribe_item(color_none);
+}
+
+void vision_subscribe_item(color_t color)
 {
     static PsCommRawFrame TX_BUFFER; // 发送数据用的缓冲区
     TX_BUFFER.frame.addr = ps_comm_type_ITEM_DETECT_REQ;
-    TX_BUFFER.frame.ring_pos_req.color = item;
+    TX_BUFFER.frame.item_detect_req.color = color;
+    vision_info.instance.select_color = color;
     __vision_subscribe(&TX_BUFFER);
 }
 
@@ -116,7 +122,7 @@ void vision_subscribe_rings()
         vision_sync(ps_comm_type_RING_POS);
         vision_info.storage_points[x-1] = vision_info.point2f;
     }
-    vision_subscribe(ps_comm_type_IDLE_REQ); // 让视觉不要再扫描了
+    vision_subscribe(ps_comm_type_IDLE_REQ);
 }
 
 Point2f vision_get_ring(color_t color)
@@ -168,6 +174,7 @@ bool vision_update_nowait()
                     sizeof(color_t)*ITEM_COUNT*ROUND_COUNT);
                 break;
             case ps_comm_type_ITEM_DETECT:
+                vision_info.index = frame->item_detect.color;
                 vision_info.item_detect = (vision_item_pos_define_t)frame->item_detect.pos;
                 break;
             case ps_comm_type_RING_POS:

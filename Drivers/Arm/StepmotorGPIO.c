@@ -1,5 +1,12 @@
 #include "StepmotorGPIO.h"
 
+void stepmotor_position_update(emm42_handle_t handle, int pulse_per_round,
+                               stepmotor_t *stepmotor)
+{
+    float pulse = (float)emm42_read_position(handle, stepmotor->ID) / 360. * pulse_per_round;
+    stepmotor->position = pulse / stepmotor->ratio;
+}
+
 ////���ò�����������
 //void StepMotor_SetData(stepmotor_t *motor,int32_t step,float speed,uint8_t flag)
 //{

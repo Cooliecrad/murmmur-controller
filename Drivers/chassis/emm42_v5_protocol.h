@@ -120,6 +120,19 @@ typedef union
     __emm42_v5_drive_tx_cfg_t tx;
 } emm42_v5_drive_t;
 
+/**
+ * @brief 读取位置数据返回的数据包
+ */
+typedef struct
+{
+    uint8_t addr;
+    uint8_t _0x36;
+    uint8_t symbol;
+    uint32_t pulse; // 注意大小端！
+    uint8_t checksum;
+} emm42_v5_read_position_t;
+
+
 #pragma pack()
 
 #endif

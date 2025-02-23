@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "emm42_v5.h"
 
 typedef enum
 {
@@ -47,6 +48,12 @@ typedef struct
 
     stepmotor_instance_t instance;
 } stepmotor_t;
+
+/**
+ * @brief 读取步进数据更新内存中的步进电机位置
+ */
+void stepmotor_position_update(emm42_handle_t handle, int pulse_per_round,
+                               stepmotor_t *stepmotor);
 
 extern stepmotor_t Motor_R;
 extern stepmotor_t Motor_Z;

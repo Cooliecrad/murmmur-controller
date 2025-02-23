@@ -114,6 +114,11 @@ HAL_StatusTypeDef emm42_reset(emm42_handle_t handle);
 void emm42_arrived(emm42_handle_t handle, uint8_t addr);
 
 /**
+ * @brief 读取电机实时位置，单位：角度
+ */
+float emm42_read_position(emm42_handle_t handle, uint8_t addr);
+
+/**
  * @paragraph 广播设置参数
  * @note 关于广播：
  * @note 1. 如果没有1号地址的电机，将无法采用广播设置

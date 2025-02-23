@@ -62,6 +62,12 @@ void vision_init(UART_HandleTypeDef *pHUART);
 void vision_subscribe(ps_comm_type_t type);
 
 /**
+ * @brief 停止检测物品的信息，如果物品检测完毕，请调用这个函数告知视觉停止检测
+ * @note 没有必要使用同步等待这个请求，因为根本不会返回值
+ */
+void vision_item_detect_stop();
+
+/**
  * @brief 向视觉订阅指定物品的信息
  * @param ring 需要的色环
  */

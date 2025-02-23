@@ -10,7 +10,6 @@
 extern float StepMotor_R_StorePosition[];
 extern float StepMotor_Forward_Store[];
 extern float StepMotor_Z_Position[];
-extern emm42_handle_t arm_emm42_handle;
 
 /**
  * @brief 采用全功能机械臂解算函数来控制机械臂位置
@@ -59,28 +58,19 @@ typedef struct
 
 typedef struct
 {
+    emm42_handle_t emm42_handle; // 通信句柄
     Point2f center; // 旋转中心（Z轴）在视觉坐标系中的位置
     float claw_distance; // 爪子零点到旋转中心的距离
+    const uint32_t PULSE_PER_ROUND; // 电机单圈脉冲数
     arm_deadzone_t deadzone;
     stepmotor_t motor_r; // 旋转电机
     stepmotor_t motor_x; // 前伸电机
     stepmotor_t motor_z; // 上升电机
 } arm_define_t;
 
-extern arm_define_t *pARM_DEFINE;
+typedef arm_define_t *arm_handle_t;
 
-typedef struct
-{
-	uint16_t angle;
-	uint16_t forward;
-}Color_Position;
-
-typedef struct
-{
-	Color_Position red;
-	Color_Position green;
-	Color_Position blue;
-}vision_position;
+extern arm_handle_t pARM_DEFINE;
 
 #ifdef __cplusplus
 extern "C"
@@ -91,6 +81,16 @@ extern "C"
  * @brief 初始化机械臂控制
  */
 void arm_ctl_init(UART_HandleTypeDef *pHUART);
+
+/**
+ * @brief 设置机械臂使能状态
+ */
+void arm_set_state(bool state);
+
+/**
+ * @brief 更新机械臂位置
+ */
+void arm_position_update(void);
 
 /**
  * @brief 电机绝对移动
@@ -109,13 +109,23 @@ void arm_move(Point2f XY, float Z);
 
 /**
  * @brief 机械臂抓取指定点位
+ * @param point 要放置的点
+ * @param z_smooth 平滑下降
  */
-Point2f arm_ground_place(Point2f pos, float z);
+void arm_ground_place(const Point3f *point, bool smooth);
 
 /**
  * @brief 等待机械臂的所有电机运动完毕
  */
 void arm_move_sync(void);
+
+/**
+ * @brief 机械爪控制
+ * @param open_close false: 开, true: 闭
+ * @note 只有机械臂稳定下来，机械爪才会接受控制。如果要在机械臂不稳定时控制机械爪，请
+ * 使用servor_ctl.h中的函数
+ */
+void arm_claw_ctl(bool open_close);
 
 void stepmotor_halt(stepmotor_t *motor);	
 void StepMotor_GetState(stepmotor_t *motor);
@@ -123,7 +133,6 @@ void Arm_Scan(void);
 void Arm_X_Zip(void);
 uint16_t angle_to_position(float angle);
 void Arm_Action(ArmAction action, ArmTarget color);
-void Arm_Action_Store_To_Ground2(ArmTarget color);
 	
 	
 #ifdef __cplusplus

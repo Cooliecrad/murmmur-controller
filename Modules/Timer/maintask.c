@@ -30,7 +30,7 @@ const static Pose2f POSE_TEMP_STORAGE = {.xy = {.x = 1.1, .y = 1.95}, .angle = 1
 const static Point2f POINT_LEFT_UP = {.x = 1.98, .y = 1.95};
 const static Pose2f POSE_PROCESS = {.xy = {.x = 1.98, .y = 1.13}, .angle = 90};
 const static Point2f POINT_RIGHT_UP = {.x = 1.98, .y = 0.175};
-const static Point2f POINT_MATERIAL2 = {.x = 1.51, .y = 0.175};
+const static Point2f POINT_MATERIAL2 = {.x = 1.585, .y = 0.175};
 ///***************************************************************/
 Pose2f pose_error; // meter
 Point2f point_move; // meter
@@ -87,58 +87,79 @@ Point2f point_move; // meter
 // }
 ///***************************************************************/
 
-///**
-// * @description: 运行到点位
-// * @return {*}
-// */
+/**
+ * @brief 前往出库点位
+ */
 void To_start(void)
 {
-	// Chassis_To(&Chassis, LINE_ACC, LINE_SPEED, start.x, start.y);
 	chassis_to(LINE_ACC, LINE_SPEED, POINT_START);
+	chassis_arrived();
+	chassis_rotate_abs(LINE_ACC, LINE_SPEED, 0);
 }
 
-void To_Rightmiddle(void)
+void to_right_middle(void)
 {
 	// Chassis_To(&Chassis, LINE_ACC, LINE_SPEED, POINT_RIGHT_MID.x, POINT_RIGHT_MID.y);
 	chassis_to(LINE_ACC, LINE_SPEED, POINT_RIGHT_MID);
+	chassis_rotate_abs(LINE_ACC, LINE_SPEED, 90);
 }
+
+/**
+ * @brief 前往左上
+ */
 void To_Leftup(void)
 {
-	// Chassis_To(&Chassis, LINE_ACC, LINE_SPEED, POINT_LEFT_UP.x, POINT_LEFT_UP.y);
 	chassis_to(LINE_ACC, LINE_SPEED, POINT_LEFT_UP);
+	chassis_rotate_abs(LINE_ACC, LINE_SPEED, 90);
 }
-void To_Ringtup(void)
+
+/**
+ * @brief 前往右上
+ */
+void to_right_up(void)
 {
-	// Chassis_To(&Chassis, LINE_ACC, LINE_SPEED, POINT_RIGHT_UP.x, POINT_RIGHT_UP.y);
 	chassis_to(LINE_ACC, LINE_SPEED, POINT_RIGHT_UP);
+	chassis_rotate_abs(LINE_ACC,LINE_SPEED,0);
 }
 
 void To_Scan(void)
 {
 	chassis_to(LINE_ACC,LINE_SPEED,POINT_SCANQR);
+	chassis_rotate_abs(LINE_ACC,LINE_SPEED,0);
 }
 
+/**
+ * @brief 前往原料区
+ */
 void To_Materia(void)
 {
-	// Chassis_To(&Chassis, LINE_ACC, LINE_SPEED, POINT_MATERIAL.x, POINT_MATERIAL.y);
 	chassis_to(LINE_ACC, LINE_SPEED, POINT_MATERIAL);
+	chassis_rotate_abs(LINE_ACC, LINE_SPEED, 0);
 }
 
-void To_TPstore(void)
+/**
+ * @brief 前往物料处理区
+ */
+void to_process(void)
 {
 	// Chassis_To(&Chassis, LINE_ACC, LINE_SPEED, POSE_TEMP_STORAGE.x, POSE_TEMP_STORAGE.y);
 	chassis_to(LINE_ACC, LINE_SPEED, POSE_TEMP_STORAGE.xy);
+	chassis_rotate_abs(LINE_ACC, LINE_SPEED, 180);
+	vision_adjust_chassis(0, &POSE_TEMP_STORAGE);
 }
 
+/**
+ * @brief 前往储存区
+ */
 void To_store(void)
 {
-	// Chassis_To(&Chassis, LINE_ACC, LINE_SPEED, POSE_PROCESS.x, POSE_PROCESS.y);
 	chassis_to(LINE_ACC, LINE_SPEED, POSE_PROCESS.xy);
+	chassis_rotate_abs(LINE_ACC, LINE_SPEED, 90);
+	vision_adjust_chassis(1, &POSE_PROCESS);
 }
 
 void To_stop(void)
 {
-	// Chassis_To(&Chassis, LINE_ACC, LINE_SPEED, POINT_ZERO);
 	chassis_to(LINE_ACC, LINE_SPEED, POINT_ZERO);
 }
 
@@ -146,32 +167,36 @@ void To_Materia2(void)
 {
 	// Chassis_To(&Chassis, LINE_ACC, LINE_SPEED, POINT_MATERIAL2.x, POINT_MATERIAL2.y);
 	chassis_to(LINE_ACC, LINE_SPEED, POINT_MATERIAL2);
+    Point2f new_dst = coordinate_transform_Z_rotate(POINT_MATERIAL, -90);
+	CHASSIS.pos = new_dst;
+	chassis_rotate_abs(LINE_ACC, LINE_SPEED, 0);
 }
 
-void Chassis_materiatask(uint8_t round)
+void material_task(uint8_t round)
 {
 	Arm_Action(Dtct, Ordinary2);
 	// 翅膀打开
 	Arm_Action(Store_Open, Ordinary2);
-
+	arm_move_sync();
+	
 	// 看颜色是否与期望顺序一致
 	for (int i = 0; i < 3; i++)
 	{
 		color_t color = vision_info.order[i + round * ITEM_COUNT];
 		vision_subscribe_item(color);
 		vision_sync(ps_comm_type_ITEM_DETECT);
+		vision_subscribe(ps_comm_type_IDLE_REQ);
 		ArmTarget target = COLOR_ARM_TARGET_MAP[color];
 		Arm_Action(Plate_To_Store, target);
 	}
+    vision_item_detect_stop(); // 通知上位机检测结束
+
 	// 翅膀关闭
 	Arm_Action(Store_Close, Ordinary2);
-	
 	Arm_Scan();
-    
-
 }
 
-void Chassis_TPplacetask(uint8_t position)
+void process_place_task(uint8_t position)
 {
 	uint8_t color_pos;
 	if (position == 1)
@@ -185,8 +210,9 @@ void Chassis_TPplacetask(uint8_t position)
 	// 翅膀打开,调整位置
 	Arm_Action(Dtct, Ordinary2);
 	Arm_Action(Store_Scan, Ordinary2);
-	Arm_Action(Store_Open, Ordinary2);
+	HAL_Delay(300);
 	vision_subscribe_rings();
+	Arm_Action(Store_Open, Ordinary2);
 	Arm_X_Zip();
 	// 取物块，放物块，拿物块
 	for (int i = 0; i < 3; i++)
@@ -195,7 +221,6 @@ void Chassis_TPplacetask(uint8_t position)
 		ArmTarget target = COLOR_ARM_TARGET_MAP[color];
 		Arm_Action(Store_To_Ground, target);
 	}
-		HAL_Delay(300);
 	for (int i = 0; i < 3; i++)
 	{
 		color_t color = vision_info.order[i + color_pos * ITEM_COUNT];
@@ -203,13 +228,18 @@ void Chassis_TPplacetask(uint8_t position)
 		Arm_Action(Ground_To_Store, target);
 	}
 
-	// 翅膀关闭
-	Arm_Action(Store_Close, Ordinary2);
 
+    Arm_Z_Middle();								  // Z抬高
+    HAL_Delay(150);
+    Arm_X_Zip();
+	stepmotor_rotate(&pARM_DEFINE->motor_r, 0);
+
+	// 翅膀关闭, 机械臂关闭
+	Arm_Action(Store_Close, Ordinary2);
 }
 
 
-void Chassis_storeplacetask(uint8_t position)
+void storage_place_task(uint8_t position)
 {
 	// 翅膀打开,调整位置
 	Arm_Action(Dtct, Ordinary2);
@@ -238,208 +268,63 @@ void Chassis_storeplacetask(uint8_t position)
 		}
 	}
 	Arm_Action(Store_Close, Ordinary2);
+	stepmotor_rotate(&pARM_DEFINE->motor_r, 0);
 }
-
-
-
-///**
-// * @description: 车辆运行逻辑
-// * @return {*}
-// */
-// void Task(void)
-// {
-
-// 	///************第一圈**********************/
-// 	To_start();
-// 	Arm_Action(Store_Close,0);
-// 	HAL_Delay(2000);
-// 	chassis_rotate_abs(LINE_ACC, LINE_SPEED, 0);
-	
-// 	vision_info.order[0]=1;
-// 	vision_info.order[1]=2;
-// 	vision_info.order[2]=3;
-// 	vision_info.order[3]=3;
-// 	vision_info.order[4]=2;
-// 	vision_info.order[5]=1;
-	
-// 	To_Materia();
-// 	HAL_Delay(4000);
-// 	chassis_rotate_abs(LINE_ACC, LINE_SPEED, 0);
-	
-// 	To_Rightmiddle();
-// 	HAL_Delay(3000);
-// 	chassis_rotate_abs(LINE_ACC, LINE_SPEED, 90);
-// 	chassis_rotate_abs(LINE_ACC, LINE_SPEED, 90);
-
-// 	To_TPstore();
-// 	HAL_Delay(5000);
-	
-// 	chassis_rotate_abs(LINE_ACC, LINE_SPEED, 180);
-// 	chassis_rotate_abs(LINE_ACC, LINE_SPEED, 180);
-	
-// 	Chassis_TPplacetask(0);
-
-// 	To_TPstore();
-// 	HAL_Delay(1500);
-	
-
-// 	To_Leftup();
-// 	HAL_Delay(3000);
-// 	chassis_rotate_abs(LINE_ACC, LINE_SPEED, 90);
-// 	chassis_rotate_abs(LINE_ACC, LINE_SPEED, 90);
-
-// 	To_store();
-// 	HAL_Delay(4000);
-	
-	
-// 	Chassis_storeplacetask(0);
-
-// 	To_store();
-// 	HAL_Delay(1000);
-// 	chassis_rotate_abs(LINE_ACC, LINE_SPEED, 90);
-
-// 	To_Ringtup();
-// 	HAL_Delay(3000);
-// 	chassis_rotate_abs(LINE_ACC, LINE_SPEED, 0);
-// 	chassis_rotate_abs(LINE_ACC, LINE_SPEED, 0);
-	///************第二圈**********************/
-
-//	To_Materia2();
-//	HAL_Delay(2000);
-//	Chassis.Location.XDistancecurrent=CoordinatesTansformation(materiapoint.x,materiapoint.y,Chassis.coord.Angle.AngleTarget + Chassis.coord.Angle.Angle_between_Word_Chassis,0);
-//	Chassis.Location.YDistancecurrent=CoordinatesTansformation(materiapoint.x,materiapoint.y,Chassis.coord.Angle.AngleTarget + Chassis.coord.Angle.Angle_between_Word_Chassis,1);
-//	Chassis_ChangeAngle2(&Chassis, 0);
-
-//	To_Rightmiddle();
-//	HAL_Delay(3000);
-//	Chassis_ChangeAngle(&Chassis, 90);
-//	Chassis_ChangeAngle2(&Chassis, 90);
-
-//	To_TPstore();
-//	HAL_Delay(5000);
-//	
-//	Chassis_ChangeAngle(&Chassis, 180);
-//	Chassis_ChangeAngle2(&Chassis, 180);
-
-//	Chassis_TPplacetask(1);
-//	To_TPstore();
-//	HAL_Delay(1000);
-//	
-
-//	To_Leftup();
-//	HAL_Delay(3000);
-//	Chassis_ChangeAngle(&Chassis, 90);
-//	Chassis_ChangeAngle2(&Chassis, 90);
-
-//	To_store();
-//	HAL_Delay(3000);
-//	Chassis_storeplacetask(1);
-//	To_store();
-//	HAL_Delay(1500);
-//	Chassis_ChangeAngle2(&Chassis, 90);
-
-//	To_Ringtup();
-//	HAL_Delay(3000);
-//	Chassis_ChangeAngle(&Chassis, 0);
-//	Chassis_ChangeAngle2(&Chassis, 0);
-	
-// 	To_start();
-// 	HAL_Delay(5000);
-// 	chassis_rotate_abs(LINE_ACC, LINE_SPEED, 0);
-
-// 	To_stop();
-// 	HAL_Delay(1000);
-// }
 
 void Taskpoint(void)
 {
 	///************第一圈**********************/
 	To_start();
-	chassis_rotate_abs(LINE_ACC, LINE_SPEED, 0);
 	
 	To_Scan();
-	chassis_rotate_abs(LINE_ACC,LINE_SPEED,0);
 	
 	vision_subscribe(ps_comm_type_SCAN_QR_REQ);
 	vision_sync(ps_comm_type_SCAN_QR);
 	vision_subscribe(ps_comm_type_IDLE_REQ);
 
 	To_Materia();
-	chassis_rotate_abs(LINE_ACC, LINE_SPEED, 0);
 	
 	//执行 圆盘——》储存
-	Chassis_materiatask(0);
+	material_task(0);
 
-	
-	To_Rightmiddle();
-	chassis_rotate_abs(LINE_ACC, LINE_SPEED, 90);
+	to_right_middle();
 
-	To_TPstore();
+	to_process();
 	
-	chassis_rotate_abs(LINE_ACC, LINE_SPEED, 180);
-	
-	vision_adjust_chassis(0, &POSE_TEMP_STORAGE);
 	//执行 储存——》圆环——》储存
-    Chassis_TPplacetask(1);
-
-	vision_adjust_chassis(0, &POSE_TEMP_STORAGE);
-	Arm_Scan();
+    process_place_task(1);
 
 	To_Leftup();
-	chassis_rotate_abs(LINE_ACC, LINE_SPEED, 90);
-
 
 	To_store();
-	vision_adjust_chassis(1, &POSE_PROCESS);
-	
 	
 	//执行 存储——》圆环
-	Chassis_storeplacetask(0);
+	storage_place_task(0);
 	
-	vision_adjust_chassis(1, &POSE_PROCESS);
-	Arm_Scan();
-
-	chassis_rotate_abs(LINE_ACC, LINE_SPEED, 90);
-
-	To_Ringtup();
-	chassis_rotate_abs(LINE_ACC, LINE_SPEED, 0);
+	to_right_up();
 	
 	///************第二圈**********************/
 
-	To_Materia2();
-	chassis_rotate_abs(LINE_ACC, LINE_SPEED, 0);
-	
 	//执行 圆盘——》存储
-	Chassis_materiatask(1);
+	To_Materia2();
+	material_task(1);
 
-	To_Rightmiddle();
-	chassis_rotate_abs(LINE_ACC, LINE_SPEED, 90);
+	to_right_middle();
 
-	To_TPstore();
+	to_process();
 	
-	chassis_rotate_abs(LINE_ACC, LINE_SPEED, 180);
-
-	vision_adjust_chassis(0, &POSE_TEMP_STORAGE);
-	
-	Chassis_TPplacetask(2);
-	vision_adjust_chassis(0, &POSE_TEMP_STORAGE);
-	Arm_Scan();
+	process_place_task(2);
 
 	To_Leftup();
-	chassis_rotate_abs(LINE_ACC, LINE_SPEED, 90);
 
 	To_store();
 	
-	
 	//执行 码垛
-	Chassis_storeplacetask(1);
+	storage_place_task(1);
 	
-	Arm_Scan();
-	To_Ringtup();
-	chassis_rotate_abs(LINE_ACC, LINE_SPEED, 0);
+	to_right_up();
 	
 	To_start();
-	chassis_rotate_abs(LINE_ACC, LINE_SPEED, 0);
 
 	To_stop();
 }
@@ -448,7 +333,6 @@ void task_vision_update_loop()
 {
 	while (1)
 	{
-		// vision_update();
 		HWT101_update();
 	}
 }
@@ -459,14 +343,14 @@ void my_debug(uint8_t flag)
 		vision_adjust_chassis(0, &POSE_TEMP_STORAGE);
 	if (flag == 6)
 	{
-		Chassis_TPplacetask(1);
+		process_place_task(1);
 	}
 	if (flag == 7)
 	{
-		Chassis_materiatask(0);
+		material_task(0);
 	}
 	if (flag == 8)
 	{
-		Chassis_storeplacetask(1);
+		storage_place_task(1);
 	}
 }

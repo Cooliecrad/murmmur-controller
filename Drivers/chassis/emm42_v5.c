@@ -5,9 +5,10 @@
 
 const static int CHASSIS_POLL_INTERVAL = 0;
 const static int EMM42_V5_QUERY_INTERVAL = 0;
+const static int EMM42_V5_READ_POSITION_INTERVAL = 20;
 
 /**
- * @brief 最后一次收发完成
+ * @brief 检测最后一次收发完成。每次发送请求之前都会检查上次是否完成接收
  */
 static inline void emm42_received(emm42_handle_t handle)
 {
@@ -36,6 +37,15 @@ static inline void emm42_received(emm42_handle_t handle)
 #endif
 }
 
+/**
+ * @brief 如果通过ps_uart_stop中断了通信，需要手动调用这个函数开启通信
+ */
+static inline void ps_uart_restart(emm42_handle_t handle)
+{
+    ps_uart_init(handle->ps_uart_handle);
+    handle->instance.received = true; // 认为接收完毕，因为ps_uart不负责接收，没法控制上下文
+}
+
 void emm42_v5_init(emm42_handle_t handle)
 {
     ps_uart_init(handle->ps_uart_handle);
@@ -51,7 +61,7 @@ HAL_StatusTypeDef emm42_set_state(emm42_handle_t handle, uint8_t addr,
 
     const static int LEN = 6;
     static uint8_t BUFFER[LEN] = {
-        0x00, 0xF3
+        0x00, 0xF3, 0xAB,
     };
     BUFFER[0] = addr;
     BUFFER[3] = enable;
@@ -224,7 +234,8 @@ void __emm42_write_drive_config(emm42_handle_t handle, uint8_t addr,
     tx->tx.cmd[1] = 0xD1;
     tx->tx._0x01 = 0x01;
     HAL_UART_Transmit_DMA(handle->ps_uart_handle->pHUART, (uint8_t*)tx, sizeof(emm42_v5_drive_t));
-    ps_uart_init(handle->ps_uart_handle); // 重新启动ps_uart的循环接收
+    ps_uart_restart(handle);
+    HAL_Delay(10); // 驱动设置相关，需要一个长延时
 }
 
 void emm42_set_response(emm42_handle_t handle, uint8_t addr, bool reached)
@@ -255,4 +266,30 @@ void emm42_arrived(emm42_handle_t handle, uint8_t addr)
         state = emm42_read_state(handle, addr);
     } while (   ((state & emm42_v5_state_ENABLE) == 0)
              || ((state & emm42_v5_state_REACHED) == 0));
+}
+
+float emm42_read_position(emm42_handle_t handle, uint8_t addr)
+{
+    emm42_received(handle);
+
+    ps_uart_stop(handle->ps_uart_handle);
+    static emm42_v5_read_position_t BUFFER;
+    HAL_StatusTypeDef status = HAL_TIMEOUT;
+    while (status != HAL_OK)
+    {
+        uint8_t *tx_buffer = (uint8_t*)&BUFFER; // 顺便用来作为发送缓冲区
+        tx_buffer[0] = addr;
+        tx_buffer[1] = 0x36;
+        tx_buffer[2] = CHECKSUM(tx_buffer, 3);
+        HAL_UART_Transmit_DMA(handle->ps_uart_handle->pHUART, tx_buffer, 3);
+        status = HAL_UART_Receive(handle->ps_uart_handle->pHUART,
+                                  (uint8_t*)&BUFFER,
+                                  sizeof(emm42_v5_read_position_t),
+                                  EMM42_V5_READ_POSITION_INTERVAL);
+    }
+    uint8_t *data = (uint8_t*)&BUFFER.pulse;
+    float pulse = (float)( data[3] + (data[2]<<8)+ (data[1]<<16) + (data[0]<<24) );
+    ps_uart_restart(handle);
+
+    return BUFFER.symbol == 0 ? ( pulse * 360. ) / 65536. : -( pulse * 360. ) / 65536.; 
 }

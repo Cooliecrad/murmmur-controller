@@ -471,7 +471,7 @@ void DMA2_Stream0_IRQHandler(void)
   /* USER CODE END DMA2_Stream0_IRQn 0 */
   HAL_DMA_IRQHandler(&hdma_uart8_rx);
   /* USER CODE BEGIN DMA2_Stream0_IRQn 1 */
-  ps_uart_receive_DMA_IT(arm_emm42_handle->ps_uart_handle);
+  ps_uart_receive_DMA_IT(pARM_DEFINE->emm42_handle->ps_uart_handle);
   /* USER CODE END DMA2_Stream0_IRQn 1 */
 }
 
@@ -523,7 +523,7 @@ void UART7_IRQHandler(void)
 void UART8_IRQHandler(void)
 {
   /* USER CODE BEGIN UART8_IRQn 0 */
-  ps_uart_receive_IDLE_IT(arm_emm42_handle->ps_uart_handle);
+  ps_uart_receive_IDLE_IT(pARM_DEFINE->emm42_handle->ps_uart_handle);
   /* USER CODE END UART8_IRQn 0 */
   HAL_UART_IRQHandler(&huart8);
   /* USER CODE BEGIN UART8_IRQn 1 */

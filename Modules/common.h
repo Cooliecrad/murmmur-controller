@@ -44,6 +44,16 @@ typedef struct
 } Point2f;
 
 /**
+ * @brief float 三维坐标点
+ */
+typedef struct
+{
+    float x;
+    float y;
+    float z;
+} Point3f;
+
+/**
  * @brief float 二维位姿
  */
 typedef struct

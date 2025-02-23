@@ -42,7 +42,7 @@ HAL_StatusTypeDef servor_rotate_2(uint16_t duration, uint8_t addr1, float angle1
                                   uint8_t addr2, float angle2)
 {
     servor_rotate(duration, addr1, angle1);
-    HAL_Delay(10);
+    HAL_Delay(100);
     return servor_rotate(duration, addr2, angle2);
     // Servor_Packet[5] = duration & 0xFF;
     // Servor_Packet[6] = duration >> 8;
