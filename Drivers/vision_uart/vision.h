@@ -22,9 +22,9 @@ typedef struct
 
 typedef enum
 {
-    vision_item_pos_BOTTOM = 5,
-    vision_item_pos_LEFT_UP = 6,
-    vision_item_pos_RIGHT_UP = 7
+    vision_item_pos_BOTTOM = 0,
+    vision_item_pos_LEFT_UP = 1,
+    vision_item_pos_RIGHT_UP = 2
 } vision_item_pos_define_t;
 
 /**
@@ -46,6 +46,8 @@ typedef struct
 extern vision_info_t vision_info;
 extern ps_uart_handle_t vision_uart_handle;
 
+const static uint8_t ITEM_COUNT = 3; // 单圈搬运需要搬运的个数
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -60,6 +62,16 @@ void vision_init(UART_HandleTypeDef *pHUART);
  * @param ps_comm_type 请求类型
  */
 void vision_subscribe(ps_comm_type_t type);
+
+/**
+ * @brief 检测放置物品的顺序
+ * @param round 圈数
+ * @param index 当前圈的第几个物品
+ */
+static inline color_t vision_get_order(uint8_t round, uint8_t index)
+{
+    return vision_info.order[round * ITEM_COUNT + index];
+}
 
 /**
  * @brief 停止检测物品的信息，如果物品检测完毕，请调用这个函数告知视觉停止检测

@@ -6,7 +6,6 @@
 #include <stdint.h>
 
 const static uint8_t ROUND_COUNT = 2; // 搬运的次数
-const static uint8_t ITEM_COUNT = 3; // 单圈搬运需要搬运的个数
 
 #ifdef M_PI
 #   define PI M_PI

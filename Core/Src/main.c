@@ -26,20 +26,17 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "Communication.h"
 #include "ili9341.h"
 #include "vision.h"
 #include "Timer.h"
 #include "HWT101.h"
-#include "StepmotorGPIO.h"
 #include "maintask.h"
 #include "servor_ctl.h"
 #include "easy_font.h"
-#include "PID.h"
 #include "Chassis.h"
-#include "using_PID.h"
 #include "Arm.h"
 #include "arm_calibrate.h"
+#include "arm_seqs.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -98,7 +95,7 @@ Point2f visionpositiontest;
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-extern PIDTypeDef AnglePID;
+// extern PIDTypeDef AnglePID;
 
 volatile uint8_t arm_test_flag = 0;
 volatile ArmAction action_test;
@@ -123,7 +120,7 @@ void PeriphCommonClock_Config(void);
  * @retval int
  */ 
 int main(void)
-{
+    {
     /* USER CODE BEGIN 1 */
     uint8_t list[10] = {0x55, 0x55, 0x08, 0x03, 0x01, 0x00, 0x00, 0x00, 0x7D, 0x00};
     /* USER CODE END 1 */
@@ -164,15 +161,10 @@ int main(void)
     MX_TIM4_Init();
     MX_TIM5_Init();
     /* USER CODE BEGIN 2 */
-    //  HAL_UART_Transmit_DMA(&huart2,list,13);
-    Communication_PacketInit();
-
-    //__HAL_DMA_DISABLE_IT(&hdma_usart2_tx,DMA_IT_HT);
-    Communication_Start();
-
-    servor_ctl_init(&huart5); // 初始化舵机控制
-    arm_ctl_init(&huart8);
+    servor_init(&huart5); // 初始化舵机控制
+    arm_ctl_init(&huart8); // 初始化机械臂控制
     vision_init(&huart6); // 初始化视觉通信
+    HWT101_init(&huart3); // 初始化陀螺仪
 
     // 初始化显示屏
     ili9341_init(&hspi1);
@@ -181,14 +173,12 @@ int main(void)
     label.fill(0, 0, 320, 240, 0x0);
     label.label(0, 0, "123+321", 0xffff);
 
-    HWT101_init(&huart3); // 初始化陀螺仪
-
     Timer_Start();
 
-    PID_Init(&ANGLE_PID, PID_mode_PID, 7, -10, 0, -1, 800, 10, 2); //-0.02
-    PID_Init(&ANGLE_PID2, PID_mode_PID, 7, -0.5, 0, -0.1, 100, 5, 2);
-    PID_Init(&PID_LOCATION_JUST_X, PID_mode_PID, 1, 0.2, 0.0005, 0.1, 100, 0, 2);
-    PID_Init(&PID_LOCATION_JUST_Y, PID_mode_PID, 1, 0.2, 0.0005, 0.1, 100, 0, 2);
+    // PID_Init(&ANGLE_PID, PID_mode_PID, 7, -10, 0, -1, 800, 10, 2); //-0.02
+    // PID_Init(&ANGLE_PID2, PID_mode_PID, 7, -0.5, 0, -0.1, 100, 5, 2);
+    // PID_Init(&PID_LOCATION_JUST_X, PID_mode_PID, 1, 0.2, 0.0005, 0.1, 100, 0, 2);
+    // PID_Init(&PID_LOCATION_JUST_Y, PID_mode_PID, 1, 0.2, 0.0005, 0.1, 100, 0, 2);
 
     chassis_init(&huart2);
 
@@ -197,7 +187,9 @@ int main(void)
 
     /* Infinite loop */
     /* USER CODE BEGIN WHILE */
-    INITALIZED = true;
+
+    // 初始化完毕 ---------------------------------------------------------------
+    INITALIZED = true; // 标志着初始化完毕
     while (1)
     {
         if (arm_test_flag == 1) // 设置角度
@@ -214,11 +206,6 @@ int main(void)
         {
             stepmotor_move(&pARM_DEFINE->motor_x, armdistance);
             arm_test_flag = 0;
-        }
-        else if (arm_test_flag == 4) // 爪子开闭测试
-        {
-            arm_test_flag = 0;
-            servor_rotate(300, 5, armdistance);
         }
         else if (arm_test_flag == 5) // R旋转测试
         {
@@ -240,14 +227,14 @@ int main(void)
         } else if (arm_test_flag == 7)
         {
             Point3f target = {.x = visionpositiontest.x, .y = visionpositiontest.y,
-                              .z = StepMotor_Z_Position[2]};
+                              .z = STEPMOTOR_Z_POSITIONS[2]};
             arm_ground_place(&target, true);
             arm_test_flag = 0;
         } else if (arm_test_flag == 8) // 失能机械臂，供用户校准
         {
             arm_set_state(false);
-            servor_ctl(servor_object_CLAW, 1, false);
-            servor_ctl(servor_object_PLATES, 1, false);
+            wing_ctl(false, true);
+            claw_ctl(false, true);
             arm_test_flag = 0;
         } else if (arm_test_flag == 9) // 校准机械臂
         {
@@ -258,24 +245,19 @@ int main(void)
         {
             arm_position_update();
             arm_test_flag = 0;
+        } else if (arm_test_flag == 11)
+        {
+            arm_action_wing_test();
+            arm_test_flag = 0;
         }
 
-        if (servorflag == 1)
+        if (servorflag == 3) // 机械爪开
         {
-            servor_rotate_2(time, 0, angle1, 1, angle2);
-            servorflag = 0;
-        }
-        else if (servorflag == 2)
-        {
-            servor_rotate(time, 7, clawangle);
-            servorflag = 0;
-        } else if (servorflag == 3) // 机械爪开
-        {
-            servor_ctl(servor_object_CLAW, 0, false);
+            claw_ctl(false, false);
             servorflag = 0;
         } else if (servorflag == 4)
         {
-            servor_ctl(servor_object_CLAW, 1, false);
+            claw_ctl(true, false);
             servorflag = 0;
         }
 

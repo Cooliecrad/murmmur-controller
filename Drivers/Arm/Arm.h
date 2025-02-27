@@ -1,67 +1,29 @@
 #ifndef __ARMTASK_H_
 #define __ARMTASK_H_
 
-#include "main.h" // Device header
-#include "StepmotorGPIO.h"
+#include "stepmotor.h"
 #include "usart.h"
 #include "common.h"
-#include "emm42_v5.h"
 
-extern float StepMotor_R_StorePosition[];
-extern float StepMotor_Forward_Store[];
-extern float StepMotor_Z_Position[];
 
 /**
  * @brief 采用全功能机械臂解算函数来控制机械臂位置
  */
 // #define __USING_FULL_FUNCTION_ARM_MOVE
 
-typedef enum
-{
-	Ordinary2 = 0,
-    Red2 = 1,
-    Green2 = 2,
-    Blue2 = 3,
-    Dtct2 = 4,
-    Limit = 5
-} ArmTarget;
-
-typedef enum
-{
-    Ordinary = 0,
-    Open = 1,
-    Close = 2
-} ArmState;
-
-typedef enum
-{
-    Ordinary3 = 0,
-    Scan = 1,			 // 扫码
-    Dtct = 2,			 // 在圆盘上识别
-    Plate_To_Store = 3,	 // 从圆盘拾取放到存储机构
-    Store_To_Ground = 4, // 从存储机构摆放到地面
-    Ground_To_Store = 5, // 从地面拾取放到存储机构
-    Maduo = 6,			 // 码垛
-    Store_Open = 7,		 // 存储机构开
-    Store_Close = 8,     // 存储机构关
-    Store_Scan,
-} ArmAction;
-
 typedef struct
 {
     bool inner; // 标志着当前在死区内
-    Point2f upper;
-    Point2f lower; // 死区范围
+    float lower; // 死区下限
+    float upper; // 死区上限
     float inner_max; // 死区内最大移动量
     float outer_max; // 死区外最大移动量
 } arm_deadzone_t;
 
 typedef struct
 {
-    emm42_handle_t emm42_handle; // 通信句柄
     Point2f center; // 旋转中心（Z轴）在视觉坐标系中的位置
     float claw_distance; // 爪子零点到旋转中心的距离
-    const uint32_t PULSE_PER_ROUND; // 电机单圈脉冲数
     arm_deadzone_t deadzone;
     stepmotor_t motor_r; // 旋转电机
     stepmotor_t motor_x; // 前伸电机
@@ -93,48 +55,10 @@ void arm_set_state(bool state);
 void arm_position_update(void);
 
 /**
- * @brief 电机绝对移动
- */
-void stepmotor_move(stepmotor_t *motor, float position);
-
-/**
- * @brief 电机绝对旋转
- */
-void stepmotor_rotate(stepmotor_t *motor, float position);
-
-/**
- * @brief 控制机械臂到达指定位置
- */
-void arm_move(Point2f XY, float Z);
-
-/**
- * @brief 机械臂抓取指定点位
- * @param point 要放置的点
- * @param z_smooth 平滑下降
- */
-void arm_ground_place(const Point3f *point, bool smooth);
-
-/**
  * @brief 等待机械臂的所有电机运动完毕
  */
 void arm_move_sync(void);
 
-/**
- * @brief 机械爪控制
- * @param open_close false: 开, true: 闭
- * @note 只有机械臂稳定下来，机械爪才会接受控制。如果要在机械臂不稳定时控制机械爪，请
- * 使用servor_ctl.h中的函数
- */
-void arm_claw_ctl(bool open_close);
-
-void stepmotor_halt(stepmotor_t *motor);	
-void StepMotor_GetState(stepmotor_t *motor);
-void Arm_Scan(void);
-void Arm_X_Zip(void);
-uint16_t angle_to_position(float angle);
-void Arm_Action(ArmAction action, ArmTarget color);
-	
-	
 #ifdef __cplusplus
 }
 #endif

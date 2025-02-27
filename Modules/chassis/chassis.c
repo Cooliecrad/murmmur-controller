@@ -90,7 +90,6 @@ void pose_calibrate_XY(Point2f point)
 
 void chassis_move(uint8_t acc, uint16_t speed, Point2f dst)
 {
-    chassis_arrived();
     // 分解
     chassis_pos_ctl_t pos_ctl;
     pos_ctl.abs = 0;
@@ -99,6 +98,7 @@ void chassis_move(uint8_t acc, uint16_t speed, Point2f dst)
     mecanum_position_analysis(dst, pos_ctl.distance);
     // 发送
     chassic_pos_ctl(&pos_ctl);
+    chassis_arrived();
 }
 
 void chassis_shift(uint8_t acc, uint16_t speed, Point2f dst)
@@ -134,7 +134,6 @@ void chassis_move_speed(uint8_t acc, Pose2f *speed)
 
 void chassis_rotate(uint8_t acc, uint16_t speed, float angle)
 {
-    chassis_arrived();
     // 分解
     chassis_pos_ctl_t pos_ctl;
     pos_ctl.abs = 0;
@@ -143,6 +142,7 @@ void chassis_rotate(uint8_t acc, uint16_t speed, float angle)
     mecanum_angle_analysis(CHASSIS.define.wheel_r, angle, pos_ctl.distance);
     // 发送
     chassic_pos_ctl(&pos_ctl);
+    chassis_arrived();
 }
 
 float ch_angle;
@@ -153,7 +153,6 @@ void chassis_rotate_abs(uint8_t acc, uint16_t speed, float angle)
     while (fabs(ch_angle) > ROTATE_THRESHOLD)
     {
         chassis_rotate(200, 800, ch_angle);
-        chassis_arrived();
         ch_angle = angle_normal(angle - HWT101_read_yaw());
     }
 //    HWT101_calibrate(angle);

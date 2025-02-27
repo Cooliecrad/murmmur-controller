@@ -2,7 +2,6 @@
 #include "HWT101.h"
 #include "Chassis.h"
 #include "vision.h"
-#include "using_PID.h"
 #include "coordinate.h"
 #include "Arm.h"
 
@@ -10,18 +9,18 @@ const static float VISION_ADJUST_POS_THRESHOLD = 0.01;
 /**
  * @brief 如果是位置模式旋转，必须大于ROTATE_THRESHOLD，否则会有问题
  */
-const static float VISION_ADJUST_ANGLE_THRESHOLD = 0.5;
+const static float VISION_ADJUST_ANGLE_THRESHOLD = 2;
 const static uint16_t VISION_ADJUST_SPEED = 500;
 const static uint16_t VISION_ADJUST_ACC = 220;
 
 void vision_calibrate_gyro(float target)
 {
-    // 上一帧实际的偏航角
+    // 上一帧实际的偏航角   
 	while (!vision_info.instance.can_adjust_yaw) HAL_Delay(0);
     float tmp = target + vision_info.instance.last_frame_vision_angle;
     // 计算上一帧的误差
     tmp -= vision_info.instance.last_frame_gyro_yaw;
-    HWT101_set_calibrate(tmp);
+    // HWT101_set_calibrate(tmp);
 }
 
 Pose2f speed;
@@ -43,7 +42,6 @@ void vision_adjust_chassis(uint8_t pos, const Pose2f *target)
 #   ifdef __VISION_CALIBRATE_POS_MODE
         float speed = distance * VISION_ADJUST_SPEED;
         chassis_move(VISION_ADJUST_ACC, speed, vision_info.point2f);
-        chassis_arrived();
         chassis_rotate_abs(VISION_ADJUST_ACC, 200, target->angle);
         // 确保没有延迟
         HAL_Delay(100);
@@ -63,7 +61,6 @@ void vision_adjust_chassis(uint8_t pos, const Pose2f *target)
 		chassis_move_speed(VISION_ADJUST_ACC, &speed);
         HAL_Delay(50);
         chassis_rotate(100, 100, -vision_info.pos_detect);
-        chassis_arrived();
 #   endif
     }
 	emm42_halt(chassis_emm42_handle, 0, 0);

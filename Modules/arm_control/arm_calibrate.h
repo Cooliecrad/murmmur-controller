@@ -1,8 +1,7 @@
 #ifndef __ARM_CALIBRATE_H__
 #define __ARM_CALIBRATE_H__
-#endif
 
-#include "Arm.h"
+#include "arm_seqs.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -16,4 +15,6 @@ void arm_calibrate(arm_handle_t handle);
 
 #ifdef __cplusplus
 }
+#endif
+
 #endif
