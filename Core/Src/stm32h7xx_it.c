@@ -22,10 +22,11 @@
 #include "stm32h7xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "emm42_v5.h"
 #include "vision.h"
+#include "stepmotor.h"
 #include "HWT101.h"
 #include "chassis_ctl.h"
-#include "Arm.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -232,7 +233,7 @@ void DMA1_Stream0_IRQHandler(void)
   /* USER CODE END DMA1_Stream0_IRQn 0 */
   HAL_DMA_IRQHandler(&hdma_usart3_rx);
   /* USER CODE BEGIN DMA1_Stream0_IRQn 1 */
-    ps_uart_receive_DMA_IT(HWT101_uart_handle);
+  HWT101_uart_handle->receive_DMA_IT();
   /* USER CODE END DMA1_Stream0_IRQn 1 */
 }
 
@@ -275,7 +276,7 @@ void DMA1_Stream3_IRQHandler(void)
   /* USER CODE END DMA1_Stream3_IRQn 0 */
   HAL_DMA_IRQHandler(&hdma_usart2_rx);
   /* USER CODE BEGIN DMA1_Stream3_IRQn 1 */
-  ps_uart_receive_DMA_IT(chassis_emm42_handle->ps_uart_handle);
+  chassis_emm42_handle->receive_DMA_IT();
   /* USER CODE END DMA1_Stream3_IRQn 1 */
 }
 
@@ -397,7 +398,7 @@ void USART1_IRQHandler(void)
 void USART2_IRQHandler(void)
 {
   /* USER CODE BEGIN USART2_IRQn 0 */
-  ps_uart_receive_IDLE_IT(chassis_emm42_handle->ps_uart_handle);
+  chassis_emm42_handle->receive_IDLE_IT();
   /* USER CODE END USART2_IRQn 0 */
   HAL_UART_IRQHandler(&huart2);
   /* USER CODE BEGIN USART2_IRQn 1 */
@@ -411,7 +412,7 @@ void USART2_IRQHandler(void)
 void USART3_IRQHandler(void)
 {
   /* USER CODE BEGIN USART3_IRQn 0 */
-  ps_uart_receive_IDLE_IT(HWT101_uart_handle);
+  HWT101_uart_handle->receive_IDLE_IT();
   /* USER CODE END USART3_IRQn 0 */
   HAL_UART_IRQHandler(&huart3);
   /* USER CODE BEGIN USART3_IRQn 1 */
@@ -471,7 +472,7 @@ void DMA2_Stream0_IRQHandler(void)
   /* USER CODE END DMA2_Stream0_IRQn 0 */
   HAL_DMA_IRQHandler(&hdma_uart8_rx);
   /* USER CODE BEGIN DMA2_Stream0_IRQn 1 */
-  ps_uart_receive_DMA_IT(pARM_DEFINE->motor_r.handle->ps_uart_handle);
+  stepmotor_emm42_handle->receive_DMA_IT();
   /* USER CODE END DMA2_Stream0_IRQn 1 */
 }
 
@@ -523,7 +524,7 @@ void UART7_IRQHandler(void)
 void UART8_IRQHandler(void)
 {
   /* USER CODE BEGIN UART8_IRQn 0 */
-  ps_uart_receive_IDLE_IT(pARM_DEFINE->motor_r.handle->ps_uart_handle);
+  stepmotor_emm42_handle->receive_IDLE_IT();
   /* USER CODE END UART8_IRQn 0 */
   HAL_UART_IRQHandler(&huart8);
   /* USER CODE BEGIN UART8_IRQn 1 */

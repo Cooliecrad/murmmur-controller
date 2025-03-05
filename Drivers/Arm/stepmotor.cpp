@@ -1,9 +1,24 @@
 #include "stepmotor.h"
+#include "emm42_v5.h"
 
-void stepmotor_position_update(stepmotor_t *stepmotor)
+// 供通信使用
+static uint8_t STEPMOTOR_BF0[40];
+static uint8_t STEPMOTOR_BF1[40];
+static uint8_t STEPMOTOR_BF2[40];
+static uint8_t *STEPMOTOR_BUFFER[3] = {STEPMOTOR_BF0, STEPMOTOR_BF1, STEPMOTOR_BF2};
+
+ps::emm42::emm42_v5 *stepmotor_emm42_handle;
+
+void stepmotor_init(UART_HandleTypeDef *pHUART)
 {
-    float pulse = (float)emm42_read_position(stepmotor->handle, stepmotor->ID);
-    stepmotor->position = ( pulse / 360. * stepmotor->PPR ) / stepmotor->ratio;
+    stepmotor_emm42_handle = new ps::emm42::emm42_v5 {pHUART, STEPMOTOR_BUFFER};
+    stepmotor_emm42_handle->set_state(0, true);
+    stepmotor_emm42_handle->set_reach_wnd(0, 1);
+}
+
+void stepmotor_set_state(uint8_t addr, bool enable)
+{
+    stepmotor_emm42_handle->set_state(addr, enable);
 }
 
 /**
@@ -18,8 +33,7 @@ static inline void __stepmotor_move(stepmotor_t *motor, float position)
     uint8_t dir = position >= 0 ? 1 : 0;
     uint32_t step = fabs(position) * motor->ratio;
     stepmotor_arrived(motor); // 确保到位
-    emm42_pos_ctl(motor->handle, motor->ID, dir, motor->speed,
-                  motor->acc, step, 1, 0);
+    stepmotor_emm42_handle->pos_ctl(motor->ID, dir, motor->speed, motor->acc, step, 1, 0);
 }
 
 void stepmotor_move(stepmotor_t *motor, float position)
@@ -61,7 +75,14 @@ void stepmotor_rotate(stepmotor_t *motor, float position)
 
     __stepmotor_move(motor, position);
 }
+
+void stepmotor_position_update(stepmotor_t *stepmotor)
+{
+    float pulse = stepmotor_emm42_handle->read_position(stepmotor->ID);
+    stepmotor->position = ( pulse / 360. * stepmotor->PPR ) / stepmotor->ratio;
+}
+
 void stepmotor_arrived(stepmotor_t *motor)
 {   
-    emm42_arrived(motor->handle, motor->ID);
+    stepmotor_emm42_handle->arrived(motor->ID);
 }

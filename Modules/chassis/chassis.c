@@ -9,9 +9,8 @@
  * Copyright (c) 2024 by jianming, All Rights Reserved.
  */
 
-#include "Chassis.h"
+#include "chassis.h"
 #include "HWT101.h"
-#include "emm42_v5.h"
 #include "coordinate.h"
 #include <math.h>
 

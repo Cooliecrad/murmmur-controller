@@ -1,6 +1,7 @@
 #include "maintask.h"
 
 #include "vision.h"
+#include "coordinate.h"
 #include "HWT101.h"
 #include "string.h"
 #include "Chassis.h"

@@ -1,6 +1,6 @@
 #include "vision_adjust.h"
 #include "HWT101.h"
-#include "Chassis.h"
+#include "chassis.h"
 #include "vision.h"
 #include "coordinate.h"
 #include "Arm.h"
@@ -63,7 +63,7 @@ void vision_adjust_chassis(uint8_t pos, const Pose2f *target)
         chassis_rotate(100, 100, -vision_info.pos_detect);
 #   endif
     }
-	emm42_halt(chassis_emm42_handle, 0, 0);
+    chassis_halt();
     // 直接校准车身
     Point2f new_dst = coordinate_transform_Z_rotate(target->xy, -90);
     CHASSIS.pos = new_dst;

@@ -4,7 +4,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "stm32h7xx_hal.h"
-#include "emm42_v5.h"
 
 /**
  * @note 电机地址：电机的地址可以是1~255，底盘电机必须是一个连续地址段
@@ -12,7 +11,6 @@
 
 const static int CHASSIS_MOTOR = 4; // 电机的数量
 const static int CHASSIS_ADDR_SHIFT = 1; // 电机地址开始地址
-extern emm42_handle_t chassis_emm42_handle; // 底盘控制使用的步进电机驱动句柄
 
 /**
  * @brief 底盘的定义
@@ -46,10 +44,14 @@ typedef struct
 typedef struct
 {
     uint8_t acc;
-    float speed[CHASSIS_MOTOR]; // 速度实际上可以达到uin16大小，但是没必要了
+    float speed[CHASSIS_MOTOR];
 } chassis_spd_ctl_t;
 
 #ifdef __cplusplus
+
+#include "emm42_v5.h"
+extern ps::emm42::emm42_v5 *chassis_emm42_handle;
+
 extern "C" {
 #endif
 
@@ -57,6 +59,11 @@ extern "C" {
  * @brief 底盘上下文初始化
  */
 void chassic_ctl_init(UART_HandleTypeDef *pHUART, chassis_def_t define);
+
+/**
+ * @brief 停止底盘
+ */
+void chassis_halt();
 
 /**
  * @brief 核心出装：向四个电机发送位置控制信号，四个电机需要同步

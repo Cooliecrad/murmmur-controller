@@ -3,13 +3,20 @@
 
 #include <stdbool.h>
 #include "stm32h7xx_hal.h"
-#include "ps_uart_v2.h"
 #include "coordinate.h"
+
+#ifdef __cplusplus
+
+#include "ps_uart_v3.h"
+extern ps::UART *HWT101_uart_handle;
+
+extern "C" {
+#endif
 
 typedef struct
 {
 	float YawExp; // 预期的当前偏航角
-	volatile float YawZ; // 原始的偏航角（未校正） -180~180
+	float YawZ; // 原始的偏航角（未校正） -180~180
 	float Yaw_calib; // 偏航角的用户校准值
 	float WY;
 	float WZ;
@@ -20,11 +27,6 @@ typedef struct
 } HWT101DataStruct;
 
 extern volatile HWT101DataStruct HWT101Data;
-extern ps_uart_handle_t HWT101_uart_handle;
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /**
  * @brief 初始化陀螺仪配置
@@ -43,15 +45,6 @@ inline void HWT101_set_calibrate(float dst)
 {
     HWT101Data.Yaw_calib = dst;
 }
-/**
- * @brief 不阻塞的更新一次陀螺仪数据
- */
-bool HWT101_update_nowait(void);
-
-/**
- * @brief 阻塞的更新一次陀螺仪数据
- */
-void HWT101_update(void);
 
 /**
  * @brief 读取校准过的偏航角

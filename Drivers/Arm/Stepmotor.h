@@ -3,7 +3,6 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-#include "emm42_v5.h"
 #include "stm32h7xx_hal.h"
 
 /**
@@ -14,7 +13,6 @@
 typedef struct
 {
 	// 硬件配置
-	emm42_handle_t handle; // 通信句柄
     uint8_t ID; // 地址
 	const uint32_t PPR; // Pulse per round, 每圈脉冲数
     double ratio; // 减速比 移动 1°/1mm 需要的脉冲数量
@@ -35,8 +33,22 @@ typedef struct
 } stepmotor_t;
 
 #ifdef __cplusplus
+
+#include "emm42_v5.h"
+extern ps::emm42::emm42_v5 *stepmotor_emm42_handle;
+
 extern "C" {
 #endif
+
+/**
+ * @brief 初始化电机通信
+ */
+void stepmotor_init(UART_HandleTypeDef *pHUART);
+
+/**
+ * @brief 设置电机状态
+ */
+void stepmotor_set_state(uint8_t addr, bool enable);
 
 /**
  * @brief 电机绝对移动
