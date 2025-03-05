@@ -5,7 +5,6 @@
 
 #include "Arm.h"
 #include "Chassis.h"
-#include "HWT101.h"
 #include "vision.h"
 
 /**
@@ -31,7 +30,6 @@ void Timer4_Callback(TIM_HandleTypeDef *htim)		//1ms
 	if (htim == &htim4)
 	{
         vision_update_nowait();
-        HWT101_update_nowait();
 	}
 }
 

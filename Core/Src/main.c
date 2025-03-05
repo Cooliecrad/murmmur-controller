@@ -120,7 +120,7 @@ void PeriphCommonClock_Config(void);
  * @retval int
  */ 
 int main(void)
-    {
+{
     /* USER CODE BEGIN 1 */
     uint8_t list[10] = {0x55, 0x55, 0x08, 0x03, 0x01, 0x00, 0x00, 0x00, 0x7D, 0x00};
     /* USER CODE END 1 */
@@ -167,11 +167,11 @@ int main(void)
     HWT101_init(&huart3); // 初始化陀螺仪
 
     // 初始化显示屏
-    ili9341_init(&hspi1);
-    ili9341_set_window(0, 0, 320, 240);
-    EasyRender label{ili9341_set_window, ili9341_write_GRAM};
-    label.fill(0, 0, 320, 240, 0x0);
-    label.label(0, 0, "123+321", 0xffff);
+    // ili9341_init(&hspi1);
+    // ili9341_set_window(0, 0, 320, 240);
+    // EasyRender label{ili9341_set_window, ili9341_write_GRAM};
+    // label.fill(0, 0, 320, 240, 0x0);
+    // label.label(0, 0, "123+321", 0xffff);
 
     Timer_Start();
 
@@ -192,6 +192,7 @@ int main(void)
     INITALIZED = true; // 标志着初始化完毕
     while (1)
     {
+        // stepmotor_rotate(&pARM_DEFINE->motor_r, HWT101Data.YawZ);
         if (arm_test_flag == 1) // 设置角度
         {
             stepmotor_rotate(&pARM_DEFINE->motor_r, armangle);

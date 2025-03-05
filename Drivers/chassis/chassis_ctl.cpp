@@ -1,19 +1,18 @@
 #include "chassis_ctl.h"
-#include "emm42_v5.h"
 #include "emm42_v5_protocol.h"
+#include "emm42_v5.h"
 #include "common.h"
 #include <stdlib.h>
 #include <math.h>
 
 static chassis_def_t CH_DEFINE;
-static emm42_v5_t CHASSIS_UART;
-static ps_uart_t CHASSIS_PS_UART;
 static uint8_t LAST_REACHED = 0; // 最后到达的电机地址
-uint8_t CHASSIS_RECV_BUFFER0[4];
-uint8_t CHASSIS_RECV_BUFFER1[4];
-uint8_t CHASSIS_RECV_BUFFER2[4];
+static uint8_t CHASSIS_BF0[4];
+static uint8_t CHASSIS_BF1[4];
+static uint8_t CHASSIS_BF2[4];
+static uint8_t *CHASSIS_BUFFER[3] = {CHASSIS_BF0, CHASSIS_BF1, CHASSIS_BF2};
 
-emm42_handle_t chassis_emm42_handle;
+ps::emm42::emm42_v5 *chassis_emm42_handle;
 
 const static int TX_DELAY_INTERVAL = 1; // 发送之间等待的间隔
 
@@ -37,25 +36,21 @@ static inline uint16_t velocity_to_rpm(chassis_def_t *cd, float v)
 
 void chassic_ctl_init(UART_HandleTypeDef *pHUART, chassis_def_t define)
 {
-    chassis_emm42_handle = &CHASSIS_UART;
-
     // 初始化串口
-    CHASSIS_PS_UART.buffer[0] = CHASSIS_RECV_BUFFER0;
-    CHASSIS_PS_UART.buffer[1] = CHASSIS_RECV_BUFFER1;
-    CHASSIS_PS_UART.buffer[2] = CHASSIS_RECV_BUFFER2;
-    CHASSIS_PS_UART.recv_len = sizeof(CHASSIS_RECV_BUFFER0);
-    CHASSIS_PS_UART.pHUART = pHUART;
-    CHASSIS_PS_UART.recv_callback = NULL;
-    CHASSIS_UART.ps_uart_handle = &CHASSIS_PS_UART;
+    chassis_emm42_handle = new ps::emm42::emm42_v5 {pHUART, CHASSIS_BUFFER};
     // 初始化底盘控制
     CH_DEFINE = define;
-    emm42_v5_init(chassis_emm42_handle);
     // 初始化底盘电机
-    emm42_set_state(chassis_emm42_handle, 0, 1, 0);
-    emm42_reset(chassis_emm42_handle);
-    emm42_halt(chassis_emm42_handle, 0, 0);
-    // emm42_set_response(chassis_emm42_handle, 0, false);
-    // emm42_set_reach_wnd(chassis_emm42_handle, 0, 1);
+    chassis_emm42_handle->set_state(0, true);
+    chassis_emm42_handle->reset();
+    chassis_emm42_handle->halt();
+    chassis_emm42_handle->set_response(0, false);
+    chassis_emm42_handle->set_reach_wnd(0, 1);
+}
+
+void chassis_halt()
+{
+    chassis_emm42_handle->halt();
 }
 
 void chassic_pos_ctl(chassis_pos_ctl_t *ctl)
@@ -82,13 +77,13 @@ void chassic_pos_ctl(chassis_pos_ctl_t *ctl)
     {
         if (pulse[index])
         {
-            emm42_pos_ctl(chassis_emm42_handle, index+CHASSIS_ADDR_SHIFT,
-                        dir[index], ctl->speed,
-                        ctl->acc, pulse[index], ctl->abs, 1);
+            chassis_emm42_handle->pos_ctl(index + CHASSIS_ADDR_SHIFT, dir[index],
+                                     ctl->speed, ctl->acc, pulse[index],
+                                     ctl->abs, true);
         }
     }
     // 设置同步
-    emm42_sync(chassis_emm42_handle);
+    chassis_emm42_handle->sync();
 }
 
 void chassis_speed_ctl(chassis_spd_ctl_t *ctl)
@@ -99,13 +94,12 @@ void chassis_speed_ctl(chassis_spd_ctl_t *ctl)
         uint8_t dir = ctl->speed[index] >= 0 ? chassis_direction_FWD
                                              : chassis_direction_BAK;
         uint16_t spd = velocity_to_rpm(&CH_DEFINE, ctl->speed[index]);
-        emm42_speed_ctl(chassis_emm42_handle, index+CHASSIS_ADDR_SHIFT,
-                        dir, spd, ctl->acc, 0);
+        chassis_emm42_handle->speed_ctl(index + CHASSIS_ADDR_SHIFT, dir, spd, ctl->acc);
     }
 }
 
 void chassis_arrived(void)
 {
     if (LAST_REACHED != 0)
-        emm42_arrived(chassis_emm42_handle, LAST_REACHED);
+        chassis_emm42_handle->arrived(LAST_REACHED);
 }
