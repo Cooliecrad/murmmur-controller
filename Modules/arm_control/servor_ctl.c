@@ -14,21 +14,21 @@ typedef struct
 // 爪子——4
 float CLAW_ANGLE[] = {
     90.0f, // 一般状态
-    21.0f,  // 关
+    17.0f,  // 关
 };
-servor_t CLAW_SERVOR = {.Num = 3, .Time = 300, .angle = CLAW_ANGLE};
+servor_t CLAW_SERVOR = {.Num = 0, .Time = 300, .angle = CLAW_ANGLE};
 
 // 左存储——0
 float PLATE_LEFT_ANGLE[] = {
-    170.0f, // 一般状态——减小则外展
-    74.0f, // 开
+    175.0f, // 一般状态——减小则外展
+    90.0f, // 开
 };
-servor_t Plate_L = {.Num = 0, .Time = 700, .angle = PLATE_LEFT_ANGLE};
+servor_t Plate_L = {.Num = 2, .Time = 700, .angle = PLATE_LEFT_ANGLE};
 
 // 右存储——1
 float PLATE_RIGHT_ANGLE[] = {
-    0.0f, // 关
-    96.f, // 开
+    5.0f, // 关
+    90.f, // 开
 };
 servor_t Plate_R = {.Num = 1, .Time = 700, .angle = PLATE_RIGHT_ANGLE};
 
@@ -46,9 +46,9 @@ void wing_ctl(bool open_close, bool sync)
     }
 }
 
-void claw_ctl(bool open_close, bool sync)
+void claw_ctl(bool close_open, bool sync)
 {
-    uint8_t new_status = open_close ? 1 : 0;
+    uint8_t new_status = close_open ? 1 : 0;
     if (CLAW_SERVOR.status != new_status)
     {
         CLAW_SERVOR.status = new_status;

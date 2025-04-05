@@ -2,6 +2,7 @@
 #define __ARM_SEQUENCES_H__
 
 #include "Arm.h"
+#include "configure.h"
 
 /**
  * @brief 机械臂动作序列定义
@@ -39,12 +40,6 @@ extern const float STEPMOTOR_R_POSITIONS[];
 extern const float STEPMOTOR_X_POSITIONS[];
 extern const float STEPMOTOR_Z_POSITIONS[];
 
-
-/**
- * @brief 控制机械臂到达指定位置
- */
-void arm_move(Point2f XY, float Z);
-
 /**
  * @brief 机械臂抓取指定点位
  * @param point 要放置的点
@@ -53,18 +48,15 @@ void arm_move(Point2f XY, float Z);
 void arm_ground_place(const Point3f *point, bool smooth);
 
 /**
- * @brief 安全和机械臂配合的机械爪控制
- * @param open_close false: 开, true: 闭
- * @note 只有机械臂稳定下来，机械爪才会接受控制。如果要在机械臂不稳定时控制机械爪，请
- * 使用servor_ctl.h中的函数
- */
-void arm_claw_ctl(bool open_close);
-
-/**
  * @brief 机械臂就绪位置
- * 机械臂：R = 0, Z = 原点， X = 原点
+ * 机械臂：R = 0, Z = 就绪点， X = 原点
  */
 void arm_standby(void);
+
+/**
+ * @brief 机械臂Z轴就绪位置
+ */
+void arm_Z_standby(void);
 
 /**
  * @brief 就绪位置 -> 识别物料位置
@@ -83,7 +75,7 @@ void arm_cat_materials(uint8_t pos);
  * @brief 就绪位置 -> 翅膀上对应物料位置
  * @note 机械爪不会打开
  */
-void arm_store_item(color_t color);
+void arm_store_item(uint8_t color);
 
 /**
  * @brief 机械臂扫描圆环位置
@@ -92,7 +84,10 @@ void arm_store_item(color_t color);
 void arm_ring_detect(void);
 
 /**
- * @brief 检测位置 -> 圆盘抓取物料 -> 存放 -> 检测位置
+ * @brief 如果定义了__MATERIALS_TASK_ONLY_SCAN_ONCE宏:
+ *              就绪位置 -> 圆盘抓取物料 -> 存放 -> 就绪位置。
+ *        否则:
+ *              检测位置 -> 圆盘抓取物料 -> 存放 -> 检测位置。
  */
 void arm_action_get_materials(uint8_t pos, color_t color);
 

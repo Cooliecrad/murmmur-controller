@@ -32,6 +32,14 @@ UART::UART(UART_HandleTypeDef *pHUART, uint8_t *(buffer[3]), uint8_t recv_max_le
     }
 }
 
+void UART::clear()
+{
+    stop(); // 停止接收
+    for (int x=0; x<3; x++) // 清空数据
+        buffer[x]->length = 0;
+    start(); // 然后重新开始接收
+}
+
 HAL_StatusTypeDef UART::transmit_nowait(const uint8_t *data, uint16_t len) const
 {
     return HAL_UART_Transmit_DMA(pHUART, data, len);
@@ -60,14 +68,25 @@ const void* UART::get_nowait(int *length)
     return NULL;
 }
 
-const void* UART::get(int *length)
+const void* UART::get(int *length, uint32_t timeout)
 {
-    const void* ret;
-    do
+    const void* ret = NULL;
+    if (timeout == 0)
     {
-        ret = get_nowait(length);
-        HAL_Delay(poll_interval);
-    } while (ret);
+        while (ret == NULL)
+        {
+            ret = get_nowait(length);
+            HAL_Delay(poll_interval);
+        }
+    } else 
+    {
+        const uint32_t round = timeout / poll_interval;
+        for (uint32_t x=0; x<round && ret == NULL; x++)
+        {
+            ret = get_nowait(length);
+            HAL_Delay(poll_interval);
+        }
+    }
     return ret;
 }
 

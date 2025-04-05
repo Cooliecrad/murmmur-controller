@@ -7,7 +7,6 @@ const static int EMM42_V5_READ_POSITION_INTERVAL = 20;
 
 using namespace ps::emm42;
 
-
 void emm42_v5::receive_cb(ps::UART& self, const uint8_t *data, uint8_t length)
 {
     ((emm42_v5&)self).received = true;
@@ -17,10 +16,9 @@ void emm42_v5::receive_cb(ps::UART& self, const uint8_t *data, uint8_t length)
 }
 
 emm42_v5::emm42_v5(UART_HandleTypeDef *pHUART, uint8_t *( bf[3] ))
-    : ps::UART {pHUART, bf, 64}
+    : ps::UART {pHUART, bf, MAX_FRAME_LENGTH}
 {
     ps::UART::receive_cb = receive_cb;
-    start();
 }
 
 void emm42_v5::until_received()
@@ -51,27 +49,24 @@ emm42_v5_state emm42_v5::read_state(uint8_t addr)
 {
     until_received();
 
+
     const static int LEN = 3;
     static_assert(sizeof(tx_buffer) >= LEN, "tx_buffer too small");
     tx_buffer[0] = addr;
     tx_buffer[1] = 0x3A;
     tx_buffer[2] = CHECKSUM(tx_buffer, LEN);
 
-    // 反复发送请求，并且反复查询请求。收发没有明确的先后次序
-    emm42_v5_state ret;
-    bool received = false;
-    while (!received)
+    // 反复发请求
+    clear();
+    const uint8_t *recv = NULL;
+    while (recv == NULL || recv[0] != addr)
     {
         transmit_nowait(tx_buffer, LEN);
-        const uint8_t *recv = (const uint8_t*)get_nowait();
-        if (recv != NULL)
-        {
-            ret = (emm42_v5_state)recv[2];
-            received = true;
-        }
-        HAL_Delay(EMM42_V5_QUERY_INTERVAL);
+        HAL_Delay(poll_interval);
+        recv = (const uint8_t*)get_nowait();
     }
-    return ret;
+
+    return (emm42_v5_state)recv[2];
 }
 
 HAL_StatusTypeDef emm42_v5::speed_ctl(uint8_t addr, uint8_t dir, uint16_t RPM,
@@ -151,13 +146,13 @@ HAL_StatusTypeDef emm42_v5::sync()
     return transmit_nowait(tx_buffer, LEN);
 }
 
-HAL_StatusTypeDef emm42_v5::reset()
+HAL_StatusTypeDef emm42_v5::reset(uint8_t addr)
 {
     until_received();
 
     const static int LEN = 4;
     static_assert(sizeof(tx_buffer) >= LEN, "tx_buffer too small");
-    tx_buffer[0] = 0x00;
+    tx_buffer[0] = addr;
     tx_buffer[1] = 0x0A;
     tx_buffer[2] = 0x6D;
     tx_buffer[3] = CHECKSUM(tx_buffer, LEN);
@@ -232,6 +227,7 @@ float emm42_v5::read_position(uint8_t addr)
     tx_buffer[1] = 0x36;
     tx_buffer[2] = CHECKSUM(tx_buffer, 3);
 
+    clear();
     const emm42::pkg::read_position *ret = NULL;
     do
     {

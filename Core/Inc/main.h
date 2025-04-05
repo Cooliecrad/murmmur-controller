@@ -37,7 +37,7 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
-
+extern int INIT;
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
@@ -64,6 +64,14 @@ void Error_Handler(void);
 #define LCD_CS_GPIO_Port GPIOC
 #define LCD_RS_Pin GPIO_PIN_5
 #define LCD_RS_GPIO_Port GPIOC
+#define BOOT0_Pin GPIO_PIN_14
+#define BOOT0_GPIO_Port GPIOD
+#define Z_CLICK_Pin GPIO_PIN_6
+#define Z_CLICK_GPIO_Port GPIOD
+#define Z_CLICK_EXTI_IRQn EXTI9_5_IRQn
+#define X_CLICK_Pin GPIO_PIN_7
+#define X_CLICK_GPIO_Port GPIOD
+#define X_CLICK_EXTI_IRQn EXTI9_5_IRQn
 
 /* USER CODE BEGIN Private defines */
 /* USER CODE END Private defines */

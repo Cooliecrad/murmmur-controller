@@ -29,7 +29,6 @@ void Timer4_Callback(TIM_HandleTypeDef *htim)		//1ms
 {
 	if (htim == &htim4)
 	{
-        vision_update_nowait();
 	}
 }
 

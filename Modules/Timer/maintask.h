@@ -1,22 +1,39 @@
 #ifndef __MAINTASK_H__
 #define __MAINTASK_H__
 
-#include <stdint.h>
+#include "common.h"
+
+namespace points
+{
+    extern const Point2f ZERO;
+    extern const Point2f START;
+    extern const Point2f START2;
+    extern const Point2f SCANQR;
+    extern const Point2f MATERIAL;
+    extern const Point2f RIGHT_MID;
+    extern const Pose2f TEMP_STORAGE;
+    extern const Pose2f TEST_STORAGE;
+    extern const Point2f LEFT_UP;
+    extern const Pose2f PROCESS;
+    extern const Point2f RIGHT_UP;
+    extern const Point2f MATERIAL2;
+}
 
 /**
- * @brief 安全移动模式。启动之后每次点位间移动会调整车子的姿态
+ * @brief 取物料任务
  */
-// #define __SAFE_MOVE_MODE
+void materials_task(uint8_t round);
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+/**
+ * @brief 处理区任务
+ */
+void process_place_task(uint8_t round);
 
-void my_debug(uint8_t flag);
-void Taskpoint(void);
+/**
+ * @brief 存储区任务
+ */
+void storage_place_task(uint8_t round);
 
-#ifdef __cplusplus
-}
-#endif
+void task(void);
 
 #endif 

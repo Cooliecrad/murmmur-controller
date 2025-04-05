@@ -58,7 +58,7 @@ extern "C" {
 /**
  * @brief 底盘上下文初始化
  */
-void chassic_ctl_init(UART_HandleTypeDef *pHUART, chassis_def_t define);
+void chassic_ctl_init(UART_HandleTypeDef *pHUART, double wheel_diameter);
 
 /**
  * @brief 停止底盘

@@ -36,6 +36,8 @@ namespace ps
 namespace emm42
 {
 
+const int MAX_FRAME_LENGTH = 40;
+
 /**
  * @brief 电机状态标志位
  */
@@ -57,6 +59,12 @@ public:
     emm42_v5(UART_HandleTypeDef *pHUART, uint8_t *( bf[3] ));
 
     ~emm42_v5() {stop();}
+
+    /**
+     * @brief 允许传输
+     */
+    void start() {ps::UART::start();}
+
     /**
      * @brief 设置电机状态
      * @param addr 要设置的地址
@@ -97,7 +105,7 @@ public:
     /**
      * @brief 归零
      */
-    HAL_StatusTypeDef reset();
+    HAL_StatusTypeDef reset(uint8_t addr = 0);
 
     /**
      * @brief 等待最后一次运动到达（标志量：handle->reached）
@@ -137,7 +145,8 @@ public:
      */
     void receive_DMA_IT() {UART::receive_DMA_IT();}
     void receive_IDLE_IT() {UART::receive_IDLE_IT();}
-    private:
+
+private:
 
     static void receive_cb(ps::UART& self, const uint8_t *data, uint8_t length);
 
@@ -158,7 +167,7 @@ public:
      */
     void __write_drive_config(uint8_t addr, emm42::pkg::drive_config *tx);
 
-    uint8_t tx_buffer[40];
+    uint8_t tx_buffer[MAX_FRAME_LENGTH];
 
     /**
      * @brief 最后一次运动到位的标志量

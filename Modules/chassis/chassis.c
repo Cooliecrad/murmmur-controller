@@ -79,7 +79,7 @@ void chassis_init(UART_HandleTypeDef *pHUART)
     CHASSIS.define.wheel_diameter = 0.08;
     CHASSIS.define.wheel_r = sqrtf(  powf(CHASSIS_PITCH_A, 2)
                                    + powf(CHASSIS_PITCH_B, 2));
-    chassic_ctl_init(pHUART, CHASSIS.define);
+    chassic_ctl_init(pHUART, 0.08);
 }
 
 void pose_calibrate_XY(Point2f point)

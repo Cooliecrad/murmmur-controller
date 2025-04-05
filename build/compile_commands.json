@@ -1,0 +1,27 @@
+[
+{
+  "directory": "D:/Code-Lib/mmcar/controller/build",
+  "command": "E:\\Code_Lib\\compilers\\mingw64\\bin\\g++.exe  @CMakeFiles/test.dir/includes_CXX.rsp  -save-temps=obj -g -o CMakeFiles\\test.dir\\demo\\test_client.cpp.obj -c D:\\Code-Lib\\mmcar\\controller\\Modules\\pcode\\demo\\test_client.cpp",
+  "file": "D:/Code-Lib/mmcar/controller/Modules/pcode/demo/test_client.cpp"
+},
+{
+  "directory": "D:/Code-Lib/mmcar/controller/build",
+  "command": "E:\\Code_Lib\\compilers\\mingw64\\bin\\g++.exe  @CMakeFiles/test.dir/includes_CXX.rsp  -save-temps=obj -g -o CMakeFiles\\test.dir\\demo\\test_server.cpp.obj -c D:\\Code-Lib\\mmcar\\controller\\Modules\\pcode\\demo\\test_server.cpp",
+  "file": "D:/Code-Lib/mmcar/controller/Modules/pcode/demo/test_server.cpp"
+},
+{
+  "directory": "D:/Code-Lib/mmcar/controller/build",
+  "command": "E:\\Code_Lib\\compilers\\mingw64\\bin\\g++.exe  @CMakeFiles/test.dir/includes_CXX.rsp  -save-temps=obj -g -o CMakeFiles\\test.dir\\demo\\test.cpp.obj -c D:\\Code-Lib\\mmcar\\controller\\Modules\\pcode\\demo\\test.cpp",
+  "file": "D:/Code-Lib/mmcar/controller/Modules/pcode/demo/test.cpp"
+},
+{
+  "directory": "D:/Code-Lib/mmcar/controller/build",
+  "command": "E:\\Code_Lib\\compilers\\mingw64\\bin\\g++.exe -Dclient_EXPORTS @CMakeFiles/client.dir/includes_CXX.rsp  -save-temps=obj -g -o CMakeFiles\\client.dir\\client\\client.cpp.obj -c D:\\Code-Lib\\mmcar\\controller\\Modules\\pcode\\client\\client.cpp",
+  "file": "D:/Code-Lib/mmcar/controller/Modules/pcode/client/client.cpp"
+},
+{
+  "directory": "D:/Code-Lib/mmcar/controller/build",
+  "command": "E:\\Code_Lib\\compilers\\mingw64\\bin\\g++.exe  @CMakeFiles/example_client.dir/includes_CXX.rsp  -save-temps=obj -g -o CMakeFiles\\example_client.dir\\client\\cclient.cpp.obj -c D:\\Code-Lib\\mmcar\\controller\\Modules\\pcode\\client\\cclient.cpp",
+  "file": "D:/Code-Lib/mmcar/controller/Modules/pcode/client/cclient.cpp"
+}
+]

@@ -24,9 +24,10 @@
 /* USER CODE BEGIN Includes */
 #include "emm42_v5.h"
 #include "vision.h"
-#include "stepmotor.h"
+#include "Arm.h"
 #include "HWT101.h"
 #include "chassis_ctl.h"
+#include "cool_rgb.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -62,10 +63,12 @@
 /* External variables --------------------------------------------------------*/
 extern DMA_HandleTypeDef hdma_spi1_tx;
 extern SPI_HandleTypeDef hspi1;
+extern DMA_HandleTypeDef hdma_tim16_ch1;
 extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim3;
 extern TIM_HandleTypeDef htim4;
 extern TIM_HandleTypeDef htim5;
+extern TIM_HandleTypeDef htim16;
 extern DMA_HandleTypeDef hdma_uart5_tx;
 extern DMA_HandleTypeDef hdma_uart8_rx;
 extern DMA_HandleTypeDef hdma_uart8_tx;
@@ -304,7 +307,7 @@ void DMA1_Stream5_IRQHandler(void)
   /* USER CODE END DMA1_Stream5_IRQn 0 */
   HAL_DMA_IRQHandler(&hdma_usart6_rx);
   /* USER CODE BEGIN DMA1_Stream5_IRQn 1 */
-	ps_uart_receive_DMA_IT(vision_uart_handle);
+  vision_uart_handle->receive_DMA_IT();
   /* USER CODE END DMA1_Stream5_IRQn 1 */
 }
 
@@ -320,6 +323,26 @@ void DMA1_Stream6_IRQHandler(void)
   /* USER CODE BEGIN DMA1_Stream6_IRQn 1 */
 
   /* USER CODE END DMA1_Stream6_IRQn 1 */
+}
+
+/**
+  * @brief This function handles EXTI line[9:5] interrupts.
+  */
+void EXTI9_5_IRQHandler(void)
+{
+  /* USER CODE BEGIN EXTI9_5_IRQn 0 */
+  // 判断中断源
+  if (__HAL_GPIO_EXTI_GET_IT(Z_CLICK_Pin))
+    motor_z->on_click();
+  else if (__HAL_GPIO_EXTI_GET_IT(X_CLICK_Pin))
+    motor_x->on_click();
+
+  /* USER CODE END EXTI9_5_IRQn 0 */
+  HAL_GPIO_EXTI_IRQHandler(Z_CLICK_Pin);
+  HAL_GPIO_EXTI_IRQHandler(X_CLICK_Pin);
+  /* USER CODE BEGIN EXTI9_5_IRQn 1 */
+
+  /* USER CODE END EXTI9_5_IRQn 1 */
 }
 
 /**
@@ -472,7 +495,7 @@ void DMA2_Stream0_IRQHandler(void)
   /* USER CODE END DMA2_Stream0_IRQn 0 */
   HAL_DMA_IRQHandler(&hdma_uart8_rx);
   /* USER CODE BEGIN DMA2_Stream0_IRQn 1 */
-  stepmotor_emm42_handle->receive_DMA_IT();
+  arm_emm42_handle->receive_DMA_IT();
   /* USER CODE END DMA2_Stream0_IRQn 1 */
 }
 
@@ -491,12 +514,26 @@ void DMA2_Stream1_IRQHandler(void)
 }
 
 /**
+  * @brief This function handles DMA2 stream2 global interrupt.
+  */
+void DMA2_Stream2_IRQHandler(void)
+{
+  /* USER CODE BEGIN DMA2_Stream2_IRQn 0 */
+
+  /* USER CODE END DMA2_Stream2_IRQn 0 */
+  HAL_DMA_IRQHandler(&hdma_tim16_ch1);
+  /* USER CODE BEGIN DMA2_Stream2_IRQn 1 */
+  ws2812_DMA_IT(cool_rgb_handle);
+  /* USER CODE END DMA2_Stream2_IRQn 1 */
+}
+
+/**
   * @brief This function handles USART6 global interrupt.
   */
 void USART6_IRQHandler(void)
 {
   /* USER CODE BEGIN USART6_IRQn 0 */
-  ps_uart_receive_IDLE_IT(vision_uart_handle);
+  vision_uart_handle->receive_IDLE_IT();
   /* USER CODE END USART6_IRQn 0 */
   HAL_UART_IRQHandler(&huart6);
   /* USER CODE BEGIN USART6_IRQn 1 */
@@ -524,12 +561,25 @@ void UART7_IRQHandler(void)
 void UART8_IRQHandler(void)
 {
   /* USER CODE BEGIN UART8_IRQn 0 */
-  stepmotor_emm42_handle->receive_IDLE_IT();
+  arm_emm42_handle->receive_IDLE_IT();
   /* USER CODE END UART8_IRQn 0 */
   HAL_UART_IRQHandler(&huart8);
   /* USER CODE BEGIN UART8_IRQn 1 */
 
   /* USER CODE END UART8_IRQn 1 */
+}
+
+/**
+  * @brief This function handles TIM16 global interrupt.
+  */
+void TIM16_IRQHandler(void)
+{
+  /* USER CODE BEGIN TIM16_IRQn 0 */
+  ws2812_TIM_IT(cool_rgb_handle);
+  /* USER CODE END TIM16_IRQn 0 */
+  HAL_TIM_IRQHandler(&htim16);
+  /* USER CODE BEGIN TIM16_IRQn 1 */
+  /* USER CODE END TIM16_IRQn 1 */
 }
 
 /* USER CODE BEGIN 1 */

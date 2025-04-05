@@ -34,8 +34,12 @@ public:
     void stop() const
     {
         HAL_UART_DMAStop(pHUART);
-        for (int x=0; x<3; x++) delete buffer[x];
     }
+
+    /**
+     * @brief 清空所有已经接收的数据
+     */
+    void clear();
     
     /**
      * @brief 非阻塞的发送数据
@@ -54,8 +58,11 @@ public:
 
     /**
      * @brief 阻塞的获取最新接收到的数据
+     * @param length 用来接收得到的结果的长度
+     * @param timeout 超时，单位毫秒。如果为0则阻塞到有数据收到
+     * @return 如果超时，返回NULL
      */
-    const void* get(int *length = NULL);
+    const void* get(int *length = NULL, uint32_t timeout = 0);
 
     /**
      * @brief DMA接收中断，触发接收中断说明存在数据包超过不定长接收的风险
@@ -110,7 +117,7 @@ private:
 /**
  * @brief 辅助函数，计算累加校验和（按字节累加）
  */
-inline uint8_t sigma_check_sum(uint8_t *frame, int len)
+inline uint8_t sigma_check_sum(const uint8_t *frame, int len)
 {
     uint8_t sum = 0;
     for (int x=0; x<len; x++) sum += frame[x];
