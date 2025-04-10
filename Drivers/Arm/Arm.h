@@ -18,6 +18,7 @@ extern ps::emm42::emm42_v5 *arm_emm42_handle;
 extern ps::motor::Stepmotor *motor_r;
 extern ps::motor::Stepmotor *motor_x;
 extern ps::motor::Stepmotor *motor_z;
+extern ps::motor::Stepmotor *motor_xzr[3];
 extern float CLAW_DISTANCE;
 
 extern "C"

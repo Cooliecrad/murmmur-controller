@@ -32,6 +32,10 @@ float PLATE_RIGHT_ANGLE[] = {
 };
 servor_t Plate_R = {.Num = 1, .Time = 700, .angle = PLATE_RIGHT_ANGLE};
 
+void servor_ctl_init(UART_HandleTypeDef *pHUART)
+{
+    servor_init(pHUART); // 初始化通信 
+}
 
 void wing_ctl(bool open_close, bool sync)
 {

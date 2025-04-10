@@ -7,7 +7,7 @@
 using namespace ps;
 
 static chassis_def_t CH_DEFINE;
-static uint8_t LAST_REACHED = 0; // 最后到达的电机地址
+uint8_t CHASSIS_ARRIVED = 0b0; // 底盘移动到位标志，每次发送指令清零
 uint8_t CHASSIS_BF0[emm42::MAX_FRAME_LENGTH];
 uint8_t CHASSIS_BF1[emm42::MAX_FRAME_LENGTH];
 uint8_t CHASSIS_BF2[emm42::MAX_FRAME_LENGTH];
@@ -53,18 +53,13 @@ void chassic_pos_ctl(chassis_pos_ctl_t *ctl)
     for (int index=0; index<CHASSIS_MOTOR; index++)
     {
         float distance = ctl->distance[index];
+        CHASSIS_ARRIVED = 0b0;
         if (distance != 0)
         {
-            if (max_abs_distance < fabs(distance))
-            {
-                max_index = index;
-                max_abs_distance = fabs(distance);
-            }
             MOTORS[index]->move(distance, true);
-        }
+        } else
+            CHASSIS_ARRIVED |= (0b1<<index);
     }
-    // 记录最远移动
-    if (max_index != -1) LAST_REACHED = max_index + CHASSIS_ADDR_SHIFT;
     // 设置同步
     chassis_emm42_handle->sync();
 }
@@ -72,6 +67,7 @@ void chassic_pos_ctl(chassis_pos_ctl_t *ctl)
 void chassis_speed_ctl(chassis_spd_ctl_t *ctl)
 {
     // 设置电机
+    CHASSIS_ARRIVED = 0b1111;
     for (int index=0; index<CHASSIS_MOTOR; index++)
     {
         MOTORS[index]->move_speed(ctl->speed[index], ctl->acc, true);
@@ -81,7 +77,10 @@ void chassis_speed_ctl(chassis_spd_ctl_t *ctl)
 
 void chassis_arrived(void)
 {
-    if (LAST_REACHED != 0)
-        chassis_emm42_handle->arrived(LAST_REACHED);
-    LAST_REACHED = 0;
+    for (int x=0; x<CHASSIS_MOTOR; x++)
+    {
+        // 检测所有需要检测到位的电机
+        if ((CHASSIS_ARRIVED & (0b1<<x)) == 0)
+            MOTORS[x]->arrived();
+    }
 }

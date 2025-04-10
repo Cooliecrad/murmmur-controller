@@ -201,10 +201,6 @@ void vision_item_detect_stop()
     vision_subscribe_item(color_none);
 }
 
-void vision_subscribe_pos(uint8_t pos)
-{
-}
-
 Point2f vision_get_pos(uint8_t pos)
 {
     // 发送请求
@@ -213,8 +209,6 @@ Point2f vision_get_pos(uint8_t pos)
     bf->pos = pos;
     __vision_subscribe(TX_BUFFER, sizeof(ps_comm_pos_detect_req_t));
     vision_sync();
-    // 停止拍照
-    vision_idle();
     return vision_info.point2f;
 }
 

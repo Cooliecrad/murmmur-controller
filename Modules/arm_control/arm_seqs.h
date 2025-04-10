@@ -41,11 +41,15 @@ extern const float STEPMOTOR_X_POSITIONS[];
 extern const float STEPMOTOR_Z_POSITIONS[];
 
 /**
+ * @brief 清除已经储存的物料位置信息，准备下一轮储存物料
+ */
+void clear_item();
+
+/**
  * @brief 机械臂抓取指定点位
  * @param point 要放置的点
- * @param z_smooth 平滑下降
  */
-void arm_ground_place(const Point3f *point, bool smooth);
+void arm_ground_place(const Point3f *point);
 
 /**
  * @brief 机械臂就绪位置

@@ -195,6 +195,7 @@ int main(void)
     
     // 使能机械臂，检查机械臂
     arm_zero_reset();
+    work_flag = 1;
     while (1)
     {
         if (arm_test_flag == 1) // 设置角度
@@ -228,7 +229,7 @@ int main(void)
         {
             Point3f target = {.x = visionpositiontest.x, .y = visionpositiontest.y,
                               .z = STEPMOTOR_Z_POSITIONS[2]};
-            arm_ground_place(&target, true);
+            arm_ground_place(&target);
         } else if (arm_test_flag == 8) // 失能机械臂，供用户校准
         {
             arm_set_state(false);
@@ -251,7 +252,7 @@ int main(void)
             for (int y=-200; y<=200; y+=10)
             {
                 p3f.y = y;
-                arm_ground_place(&p3f, true);
+                arm_ground_place(&p3f);
                 arm_move_sync();
                 HAL_Delay(20);
             }
@@ -337,7 +338,7 @@ int main(void)
         if (work_flag == 4)
             process_place_task(0);
         if (work_flag == 5)
-            materials_task(0);
+            materials_task(1);
         if (work_flag == 6)
             storage_place_task(0);
         else if (work_flag == 7)

@@ -6,12 +6,13 @@
 #include "HWT101.h"
 #include "Chassis.h"
 #include "Arm.h"
+#include "arm_seqs.h"
 #include "driver_middle.h"
 #include "vision_adjust.h"
 #include "servor_ctl.h"
 /************宏定义**********************/
-const static uint16_t LINE_SPEED = 650;
-const static uint8_t LINE_ACC = 180;
+const static uint16_t LINE_SPEED = 800;
+const static uint8_t LINE_ACC = 205;
 /************物流搬运初赛场地上的点位**********************/
 
 namespace points
@@ -20,15 +21,17 @@ namespace points
     const Point2f START {0.175, 0.175};
     const Point2f START2 {0.25, 0.175};
     const Point2f SCANQR {0.65,0.175};
-    const Point2f MATERIAL {1.5, 0.175};
+    const Point2f MATERIAL {1.51, 0.175};
     const Point2f RIGHT_MID {1.1, 0.175};
     const Pose2f TEMP_STORAGE {{1.1, 1.95}, 180};
     const Pose2f TEST_STORAGE {{1.1, 1.95}, 0};
-    const Point2f LEFT_UP {1.95, 1.95};
-    const Pose2f PROCESS {{1.95, 1.13}, 90};
-    const Point2f RIGHT_UP {1.95, 0.175};
-    const Point2f MATERIAL2 {1.56, 0.18};
+    const Point2f LEFT_UP {1.92, 1.95};
+    const Pose2f PROCESS {{1.92, 1.13}, 90};
+    const Point2f RIGHT_UP {1.92, 0.175};
+    const Point2f MATERIAL2 {1.51, 0.18};
 }
+
+
 
 /**
  * @brief 前往出库点位
@@ -127,6 +130,7 @@ void to_materials_2(void)
 void materials_task(uint8_t round)
 {
     arm_item_detect();
+    clear_item();
 
     /**
      * @brief 如果只扫描一次，那么只有首个需要抬升到检测位置
@@ -147,8 +151,14 @@ void materials_task(uint8_t round)
         uint8_t pos = vision_get_item(color); 
         arm_action_get_materials(pos, color);
     }
-    vision_item_detect_stop(); // 通知上位机检测结束
 
+#   ifdef __MATERIALS_TASK_ONLY_SCAN_ONCE_V2
+        if (round == 1) vision_item_detect_stop(); // 通知上位机检测结束
+#   else
+        vision_item_detect_stop(); // 通知上位机检测结束
+#   endif
+
+    vision_idle();
     arm_standby(); // 翅膀关闭
 }
 

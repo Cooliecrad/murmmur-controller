@@ -67,12 +67,6 @@ uint8_t vision_get_item(color_t color);
 void vision_item_detect_stop();
 
 /**
- * @brief 向视觉订阅指定位置的误差
- * @param pos 位置编号
- */
-void vision_subscribe_pos(uint8_t pos);
-
-/**
  * @brief 返回当前的位置误差
  * @note 如果未提前调用vision_subscribe_pos()，可能会导致程序卡死、数据读取错误等问题
  */

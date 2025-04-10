@@ -7,9 +7,9 @@
 /**
  * @brief 平滑模式速度参数
  */
-const static float ACC_R_SMOOTH = 220; // 放物块时R的加速度
-const static float ACC_Z_SMOOTH = 230; // 放物块时Z的加速度
-const static float ACC_X_SMOOTH = 240; // 放物块时X的加速度
+const static float ACC_R_SMOOTH = 235; // 放物块时R的加速度
+const static float ACC_Z_SMOOTH = 240; // 放物块时Z的加速度
+const static float ACC_X_SMOOTH = 245; // 放物块时X的加速度
 
 // 就绪点位 ---------------------------------------------------------------------
 const float POSITION_R_STANDBY = 0;
@@ -25,30 +25,30 @@ const float POSITION_X_RING_DETECT = 0;
 
 // 翅膀点位 ---------------------------------------------------------------------
 const float POSITION_R_WINGS[] = {
-    POSITION_R_STANDBY,
-    -67.8638687,	   // 红
-    -74.1761703,	   // 绿
-    -296.44101, // 蓝
+    -67.8638687, // 右内
+    -74.1761703, // 右外
+    -296.44101, // 左内
+    -288.996674, // 左外
 };
 
 const float POSITION_X_WINGS[] = {
-    POSITION_X_STANDBY,
-    9.88867188,	   // 红
-    91.6523438,	   // 绿
-    9.078125,	   // 蓝
+    9.88867188,
+    91.6523438,
+    9.078125,
+    88.8828125,
 };
 
 // 物料区夹取点位 ---------------------------------------------------------------
 const float POSITION_R_MATERIALS[] = {
-    -179.465622,   // 圆盘中下位置
-    -197.620316,   // 圆盘左上位置
-    -167.739258,   // 圆盘右上位置
+    -176.944916,   // 圆盘中下位置
+    -192.164063,   // 圆盘左上位置
+    -163.926559,   // 圆盘右上位置
 };
 
 const float POSITION_X_MATERIALS[] = {
-    51.0585938,
-    203.394531,	   // 圆盘左上
-    213.673828,	   // 圆盘右上
+    48.6328125,
+    209.8125,	   // 圆盘左上
+    212.994141,	   // 圆盘右上
 };
 
 const float STEPMOTOR_R_POSITIONS[] = {
@@ -61,7 +61,6 @@ const float STEPMOTOR_R_POSITIONS[] = {
     -193.5,   // 圆盘左上位置
     -166.5,   // 圆盘右上位置
     -360	   // 限位
-
 };
 
 const float STEPMOTOR_X_POSITIONS[] = {
@@ -77,7 +76,7 @@ const float STEPMOTOR_X_POSITIONS[] = {
 
 const float STEPMOTOR_Z_POSITIONS[] = {
     POSITION_Z_STANDBY, // 最高位置
-    -95.8813477, // 圆盘夹取的高度
+    -103.787842, // 圆盘夹取的高度
     -205, // 夹爪到地面高度
     -120,
     -105,	//码垛高度
@@ -87,16 +86,56 @@ const float STEPMOTOR_Z_POSITIONS[] = {
 
 
 // 新加
-Point2f armposition = {.x = -209, .y = -10};
+Point2f armposition = {.x = -209, .y = -11};
 Point2f CLAW_ATTR = {.x = 145, .y = 5};
 
-// 物品所在的位置
 namespace
 {
-    const uint8_t ITEM_POS[4] = {1, 1, 2, 3};
+    const int STOARGE_COUNT = 4; // 储存机构容量
+    /**
+     * @brief 颜色 -> 位置映射
+     * @note 物品位置定义：0：左内 1：左外 2：右内 3：右外
+     */
+    uint8_t ITEM_COLOR_POS[ITEM_COUNT+1] = {0, 0, 1, 2};
+    /**
+     * @brief 位置 -> 颜色映射
+     */
+    color_t ITEM_POS_COLOR[STOARGE_COUNT] = {color_red, color_green, color_blue};
 }
 
-void arm_ground_place(const Point3f *point, bool smooth)
+void clear_item()
+{
+    for (int x=0; x<STOARGE_COUNT; x++) ITEM_POS_COLOR[x] = color_none;
+    for (int x=0; x<ITEM_COUNT+1; x++) ITEM_COLOR_POS[x] = 0;
+}
+
+/**
+ * @brief 储存物体到翅膀中，分配翅膀位置
+ * @param plate_pos 圆盘上的位置
+ * @return 应该储存到的翅膀位置
+ */
+uint8_t storage_item(color_t color, uint8_t plate_pos)
+{
+    int pos = plate_pos < 2 ? 2 : 0; // 储存到的位置：中下&左上优先到左边，其余右边
+    while (ITEM_POS_COLOR[pos] != color_none) // 有东西就顺延
+    {
+        pos = (pos+1)%(STOARGE_COUNT); // 如果一边满了，就堆到另一边
+    }
+    // 维护两组映射
+    ITEM_COLOR_POS[(uint8_t)color] = pos;
+    ITEM_POS_COLOR[pos] = color;
+    return pos;
+}
+
+/**
+ * @brief 获取物品位置
+ */
+uint8_t get_storage_item(color_t color)
+{
+    return ITEM_COLOR_POS[(uint8_t)color];
+}
+
+void arm_ground_place(const Point3f *point)
 {
 #	ifdef __USING_FULL_FUNCTION_ARM_MOVE
     arm_move(pos, STEPMOTOR_Z_POSITIONS[2]);
@@ -119,17 +158,11 @@ void arm_ground_place(const Point3f *point, bool smooth)
     // 夹爪补偿
     deg -= (asinf(CLAW_ATTR.y/R) / PI * 180.);
     R = sqrt(powf(R, 2) - powf(CLAW_ATTR.y, 2)) - CLAW_ATTR.x;
-
-    if (smooth)
-    {
-        motor_r->move_to(deg, motor_r->default_speed, ACC_R_SMOOTH);
-        motor_x->move_to(R, motor_x->default_speed, ACC_X_SMOOTH);
-        motor_z->move_to(point->z, motor_z->default_speed, ACC_Z_SMOOTH);
-    } else {
-        motor_r->move_to(deg);
-        motor_x->move_to(R);
-        motor_z->move_to(point->z);
-    }
+    // 移动
+    motor_r->move_to(deg);
+    motor_r->arrived();
+    motor_x->move_to(R);
+    motor_z->move_to(point->z);
 #	endif
 }
 
@@ -181,8 +214,10 @@ void arm_cat_materials(uint8_t pos)
     motor_z->move_to(POSITION_Z_STANDBY);
     motor_z->arrived();
 
-    motor_x->move_to(POSITION_X_MATERIALS[pos]);
     motor_r->move_to(POSITION_R_MATERIALS[pos]);
+    motor_r->arrived();
+
+    motor_x->move_to(POSITION_X_MATERIALS[pos]);
     motor_z->move_to(STEPMOTOR_Z_POSITIONS[1]);
 
     arm_claw_ctl(true);
@@ -220,45 +255,60 @@ void arm_action_get_materials(uint8_t pos, color_t color)
 
     // 存放
     arm_Z_standby();
-    uint8_t wing_pos = ITEM_POS[(uint8_t)color];
+    uint8_t wing_pos = storage_item(color, pos);
     arm_store_item(wing_pos); // 摆放到存储机构
     arm_claw_ctl(false); // 张爪
     
     arm_Z_standby();
-#   ifndef __MATERIALS_TASK_ONLY_SCAN_ONCE
+#   ifdef __MATERIALS_TASK_ONLY_SCAN_ONCE
+#   else
         arm_item_detect(); // 归位为检测位置
 #   endif
 }
 
 void arm_action_store_to_ground(color_t color)
 {
-    uint8_t pos = ITEM_POS[(uint8_t)color];
-    arm_store_item(pos); // 移到存储处对应位置
+    // 采用慢速加速
+    uint8_t acc_xzr[3];
+    for (int x=0; x<3; x++) acc_xzr[x] = motor_xzr[x]->default_acc;
+    motor_x->default_acc = ACC_X_SMOOTH;
+    motor_z->default_acc = ACC_Z_SMOOTH;
+    motor_r->default_acc = ACC_R_SMOOTH;
+
+    uint8_t wing_pos = get_storage_item(color);
+    arm_store_item(wing_pos); // 移到存储处对应位置
     arm_claw_ctl(true); // 闭
+    // X&Z移动到就绪位置
     arm_Z_standby();
+    motor_x->move_to(POSITION_X_STANDBY);
+    motor_x->arrived();
 
     // 移动到放置位置
     Point2f tmp = vision_get_ring(color);
     Point3f target = {.x = tmp.x, .y = tmp.y, .z = STEPMOTOR_Z_POSITIONS[2]};
-    arm_ground_place(&target, true); // 移到对应圆环位置
+    arm_ground_place(&target); // 移到对应圆环位置
 
     arm_claw_ctl(false); // 张爪
     arm_Z_standby();
+
+    // 恢复原始加速度
+    for (int x=0; x<3; x++) motor_xzr[x]->default_acc = acc_xzr[x];
 }
 
 void arm_action_palletising(color_t color)
 {
-    uint8_t pos = ITEM_POS[(uint8_t)color];
-    arm_store_item(pos); // 移到对应存储机构位置
+    uint8_t wing_pos = get_storage_item(color);
+    arm_store_item(wing_pos); // 移到对应存储机构位置
     arm_claw_ctl(true); // 闭
     arm_Z_standby();
+    motor_x->move_to(POSITION_X_STANDBY);
+    motor_x->arrived();
 
     // 移动到码垛位置
     Point2f tmp = vision_get_ring(ARM_TARGET_COLOR_MAP[color]);
     Point3f target = {.x = tmp.x, .y = tmp.y, .z = STEPMOTOR_Z_POSITIONS[4]};
-    arm_ground_place(&target, true);
-
-    HAL_Delay(300); // 稍微等一下，不然容易放不稳
+    arm_ground_place(&target);
+    HAL_Delay(500); // 稍微等一下，不然容易放不稳
     arm_claw_ctl(false); // 张爪
     arm_Z_standby();
 }
@@ -267,13 +317,14 @@ void arm_action_ground_to_store(color_t color)
 {
     Point2f tmp = vision_get_ring(color);
     Point3f target = {.x = tmp.x, .y = tmp.y, .z = STEPMOTOR_Z_POSITIONS[2]};
-    arm_ground_place(&target, false); // 移到对应圆环位置
+    arm_ground_place(&target); // 移到对应圆环位置
 
     arm_claw_ctl(true); // 闭
     motor_x->move_to(POSITION_X_STANDBY);
     arm_Z_standby();
-    uint8_t pos = ITEM_POS[(uint8_t)color];
-    arm_store_item(pos); // 移到对应存储机构位置
+
+    uint8_t wing_pos = get_storage_item(color);
+    arm_store_item(wing_pos); // 移到对应存储机构位置
     arm_claw_ctl(false); // 张爪
 
     arm_Z_standby();

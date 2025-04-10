@@ -9,6 +9,7 @@ emm42::emm42_v5 *arm_emm42_handle = nullptr;
 motor::Stepmotor *motor_r = nullptr;
 motor::Stepmotor *motor_x = nullptr;
 motor::Stepmotor *motor_z = nullptr;
+motor::Stepmotor *motor_xzr[3];
 float CLAW_DISTANCE = 135;
 
 namespace
@@ -105,19 +106,23 @@ void arm_ctl_init(UART_HandleTypeDef *pHUART)
     // 设定R电机
     motor_r = new motor::Stepmotor {*arm_emm42_handle,
                                     1, 1. / 360. * 100. / 16. * 3200};
-    motor_r->default_acc = 245;
+    motor_r->default_acc = 243;
     motor_r->default_speed = 2100;
     motor_r->set_protect(-360, 360);
     // 设定X电机
     motor_x = new motor::Stepmotor {*arm_emm42_handle, 3, 50};
-    motor_x->default_acc = 251;
+    motor_x->default_acc = 252;
     motor_x->default_speed = 2300;
     motor_x->set_protect(0, 300);
     // 设定Z电机
     motor_z = new motor::Stepmotor {*arm_emm42_handle, 2, 80};
-    motor_z->default_acc = 250;
+    motor_z->default_acc = 252;
     motor_z->default_speed = 2300;
     motor_z->set_protect(-220, 0);
+    // 设定电机数组
+    motor_xzr[0] = motor_x;
+    motor_xzr[1] = motor_z;
+    motor_xzr[2] = motor_r;
 
     // 初始化电机
     arm_position_update();

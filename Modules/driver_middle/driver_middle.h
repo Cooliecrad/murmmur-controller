@@ -2,7 +2,6 @@
 #define __DRIVER_MIDDLE_H__
 
 #include "common.h"
-#include "arm_seqs.h"
 
 /**
  * @brief 将color映射到ArmTarget

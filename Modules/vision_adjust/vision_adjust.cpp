@@ -7,8 +7,8 @@
 
 namespace
 {
-    const float POS_THRESHOLD = 0.003;
-    const float POS_RATE = 0.8;
+    const float POS_THRESHOLD = 0.01;
+    const float POS_RATE = 1;
     const uint16_t SPEED = 500;
     const uint16_t ACC = 220;
 }
@@ -26,6 +26,7 @@ void vision_adjust_chassis(uint8_t pos, const Pose2f *target)
     {
 #   ifdef __VISION_CALIBRATE_POS_MODE
         float speed = distance * SPEED;
+        pos_error.x *= POS_RATE, pos_error.y *= POS_RATE;
         chassis_move(ACC, speed, pos_error);
         chassis_rotate_abs(ACC, 200, target->angle);
         // 下一轮校准

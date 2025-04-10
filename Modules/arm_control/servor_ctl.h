@@ -8,7 +8,7 @@ extern "C" {
 
 /**
  * @brief 翅膀控制
- * @param close_open 翅膀状态，true关闭/ false打开
+ * @param open_close 翅膀状态，true关闭/ false打开
  * @param sync 在函数中等待操作完毕
  */
 void wing_ctl(bool open_close, bool sync);
