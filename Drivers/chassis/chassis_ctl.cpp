@@ -56,7 +56,7 @@ void chassic_pos_ctl(chassis_pos_ctl_t *ctl)
         CHASSIS_ARRIVED = 0b0;
         if (distance != 0)
         {
-            MOTORS[index]->move(distance, true);
+            MOTORS[index]->move(distance, ctl->speed, ctl->acc, true);
         } else
             CHASSIS_ARRIVED |= (0b1<<index);
     }

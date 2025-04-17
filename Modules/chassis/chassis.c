@@ -16,7 +16,6 @@
 
 const static float CHASSIS_PITCH_A = 0.11; // 底盘的短轴长度的一半
 const static float CHASSIS_PITCH_B = 0.12; // 底盘的长轴长度的一半
-const static float ROTATE_TIMES = 1.45; // 旋转的空程
 const static float ROTATE_THRESHOLD = 0.5; // 可接受的角度误差
 
 #define Division 16
@@ -35,10 +34,11 @@ chassis_t CHASSIS;
  * @note 底盘运动学模型: 象限和电机地址的映射 1-2 2-1 3-3 4-4
  * @return {*}
  */
-static inline void mecanum_pose_analysis(float r, Pose2f *pose, float motor_dst[4])
+static inline void mecanum_pose_analysis(float a_b_sum, Pose2f *pose,
+                                         float motor_dst[4])
 {
     float angle = pose->angle/180.*PI;
-    float vz_ = angle * r * ROTATE_TIMES;
+    float vz_ = angle * a_b_sum;
     motor_dst[0] = - pose->xy.x - pose->xy.y + vz_;
     motor_dst[1] = - pose->xy.x + pose->xy.y + vz_;
     motor_dst[2] = + pose->xy.x - pose->xy.y + vz_;
@@ -59,14 +59,25 @@ static inline void mecanum_position_analysis(Point2f point, float motor_dst[4])
 /** 
  * @brief 麦轮的逆运动分解，只包含角度旋转
  */
-static inline void mecanum_angle_analysis(float r, float angle, float motor_dst[4])
+static inline void mecanum_angle_analysis(float a_b_sum,
+                                          float angle, float motor_dst[4])
 {
     angle = angle/180.*PI;
-    float vz_ = angle * r * ROTATE_TIMES;
+    float vz_ = angle * a_b_sum;
     motor_dst[0] = + vz_;
     motor_dst[1] = + vz_;
     motor_dst[2] = + vz_;
     motor_dst[3] = + vz_;
+}
+
+static inline void mecanum_total_analysis(float a_b_sum,float angle,Point2f point, float motor_dst[4])
+{
+    angle = angle/180.*PI;
+    float vz_ = angle * a_b_sum;
+    motor_dst[0] = - point.x - point.y + vz_;
+    motor_dst[1] = - point.x + point.y + vz_;
+    motor_dst[2] = + point.x - point.y + vz_;
+    motor_dst[3] = + point.x + point.y + vz_;
 }
 
 void chassis_init(UART_HandleTypeDef *pHUART)
@@ -77,8 +88,7 @@ void chassis_init(UART_HandleTypeDef *pHUART)
 
     // 初始化底盘
     CHASSIS.define.wheel_diameter = 0.08;
-    CHASSIS.define.wheel_r = sqrtf(  powf(CHASSIS_PITCH_A, 2)
-                                   + powf(CHASSIS_PITCH_B, 2));
+    CHASSIS.define.pitch_a_b_sum = CHASSIS_PITCH_A+CHASSIS_PITCH_B;
     chassic_ctl_init(pHUART, 0.08);
 }
 
@@ -126,7 +136,7 @@ void chassis_move_speed(uint8_t acc, Pose2f *speed)
 {
     chassis_spd_ctl_t spd_ctl;
     spd_ctl.acc = acc;
-    mecanum_pose_analysis(CHASSIS.define.wheel_r, speed, spd_ctl.speed);
+    mecanum_pose_analysis(CHASSIS.define.pitch_a_b_sum, speed, spd_ctl.speed);
     // 发送
     chassis_speed_ctl(&spd_ctl);
 }
@@ -138,7 +148,7 @@ void chassis_rotate(uint8_t acc, uint16_t speed, float angle)
     pos_ctl.abs = 0;
     pos_ctl.acc = acc;
     pos_ctl.speed = speed;
-    mecanum_angle_analysis(CHASSIS.define.wheel_r, angle, pos_ctl.distance);
+    mecanum_angle_analysis(CHASSIS.define.pitch_a_b_sum, angle, pos_ctl.distance);
     // 发送
     chassic_pos_ctl(&pos_ctl);
     chassis_arrived();
@@ -152,9 +162,32 @@ void chassis_rotate_abs(uint8_t acc, uint16_t speed, float angle)
     while (fabs(ch_angle) > ROTATE_THRESHOLD)
     {
         chassis_rotate(200, 800, ch_angle);
+        HAL_Delay(100);
         ch_angle = angle_normal(angle - HWT101_read_yaw());
     }
-//    HWT101_calibrate(angle);
+
+    //    HWT101_calibrate(angle);
+}
+
+void chassis_rotate_move_tall(uint8_t acc, uint16_t speed, float angle, Point2f position)
+{
+    Point2f position_abs = coordinate_transform_Z_rotate(position, -90);
+    Pose2f pose;
+    pose.xy = CHASSIS.pos;
+
+    chassis_pos_ctl_t pos_ctl;
+    pos_ctl.abs = 0;
+    pos_ctl.acc = acc;
+    pos_ctl.speed = speed;
+    mecanum_angle_analysis(CHASSIS.define.pitch_a_b_sum, angle, pos_ctl.distance);
+    
+    pose.angle = HWT101_read_yaw();
+    position = coordinate_transform(position, pose); // 逆解算出HWT101_read_yaw相对移动
+    ch_angle = angle_normal(angle - HWT101_read_yaw());
+    mecanum_total_analysis(CHASSIS.define.pitch_a_b_sum,ch_angle,position,pos_ctl.distance);
+    chassic_pos_ctl(&pos_ctl);
+    chassis_arrived();
+
 }
 
 // void Chassis_Movedistance(ChassisTypeDef *chassis, uint8_t acc,uint16_t speed ,float x,float y)

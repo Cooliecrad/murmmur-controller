@@ -26,18 +26,17 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "ili9341.h"
 #include "vision.h"
 #include "remote_control.h"
 #include "Timer.h"
 #include "HWT101.h"
 #include "maintask.h"
 #include "servor_ctl.h"
-#include "easy_font.h"
 #include "Chassis.h"
 #include "Arm.h"
 #include "arm_seqs.h"
-#include "cool_rgb.h"
+#include "screen.h"
+// #include "cool_rgb.h"
 
 #include "vision_adjust.h"
 #include "maintask.h"
@@ -87,6 +86,7 @@ Point2f visionpositiontest;
 
 /* USER CODE BEGIN PV */
 // extern PIDTypeDef AnglePID;
+Point2f positiontest {0, 1};
 
 volatile uint8_t arm_test_flag = 0;
 volatile ArmAction action_test;
@@ -111,8 +111,7 @@ void PeriphCommonClock_Config(void);
   * @retval int
   */
 int main(void)
-
-{
+    {
   /* USER CODE BEGIN 1 */
   /* USER CODE END 1 */
 
@@ -158,14 +157,8 @@ int main(void)
     vision_init(&huart6); // 初始化视觉通信
     chassis_init(&huart2); // 初始化底盘控制
     HWT101_init(&huart3); // 初始化陀螺仪
-    cool_rgb_init(&htim16, TIM_CHANNEL_1, 40);
-
-    // 初始化显示屏
-    ili9341_init(&hspi1);
-    ili9341_set_window(0, 0, 320, 240);
-    EasyRender label{ili9341_set_window, ili9341_write_GRAM};
-    label.fill(0, 0, 320, 240, 0x0);
-    label.label(0, 0, "123+321", 0xffff);
+    screen_init(&hspi1); // 初始化屏幕
+    // cool_rgb_init(&htim16, TIM_CHANNEL_1, 40);
 
     Timer_Start();
 
@@ -173,7 +166,6 @@ int main(void)
     // PID_Init(&ANGLE_PID2, PID_mode_PID, 7, -0.5, 0, -0.1, 100, 5, 2);
     // PID_Init(&PID_LOCATION_JUST_X, PID_mode_PID, 1, 0.2, 0.0005, 0.1, 100, 0, 2);
     // PID_Init(&PID_LOCATION_JUST_Y, PID_mode_PID, 1, 0.2, 0.0005, 0.1, 100, 0, 2);
-
 
     HAL_GPIO_WritePin(GPIOE, GPIO_PIN_5, GPIO_PIN_SET);
   /* USER CODE END 2 */
@@ -198,6 +190,9 @@ int main(void)
     work_flag = 1;
     while (1)
     {
+        work_flag = HAL_GPIO_ReadPin(BOOT1_GPIO_Port, BOOT1_Pin) == GPIO_PIN_RESET
+                  ? 1
+                  : 0;
         if (arm_test_flag == 1) // 设置角度
         {
             motor_r->move_to(armangle);
@@ -283,11 +278,12 @@ int main(void)
         {
             while (1)
             {
-                USER_POSE.xy.x = 2;
-                USER_POSE.xy.y = 0;
+                USER_POSE.xy.x = 0;
+                USER_POSE.xy.y = 2;
                 chassis_move(LINE_ACC, LINE_SPEED, USER_POSE.xy);
 
-                USER_POSE.xy.x = -2;
+                USER_POSE.xy.x = 0;
+                USER_POSE.xy.y = -2;
                 chassis_move(LINE_ACC, LINE_SPEED, USER_POSE.xy);
             }
 			
@@ -304,17 +300,17 @@ int main(void)
         {
             while (1)
             {
-                for (float x=0; x<360; x++)
-                {
-                    chassis_rotate_abs(LINE_ACC, LINE_SPEED, x);
-                }
-                // chassis_rotate_abs(LINE_ACC, LINE_SPEED, USER_POSE.angle);
-                // USER_POSE.angle = 150;
-                // chassis_rotate_abs(LINE_ACC, LINE_SPEED, USER_POSE.angle);
-                // USER_POSE.angle = -50;
-                // chassis_rotate_abs(LINE_ACC, LINE_SPEED, USER_POSE.angle);
-                // USER_POSE.angle = 50;
-                // chassis_rotate_abs(LINE_ACC, LINE_SPEED, USER_POSE.angle);
+                // for (float x=0; x<360; x+=90)
+                // {
+                //     chassis_rotate_abs(LINE_ACC, LINE_SPEED, x);
+                // }
+                chassis_rotate_abs(LINE_ACC, LINE_SPEED, USER_POSE.angle);
+                USER_POSE.angle = 90;
+                chassis_rotate_abs(LINE_ACC, LINE_SPEED, USER_POSE.angle);
+                USER_POSE.angle = -90;
+                chassis_rotate_abs(LINE_ACC, LINE_SPEED, USER_POSE.angle);
+                USER_POSE.angle = 90;
+                chassis_rotate_abs(LINE_ACC, LINE_SPEED, USER_POSE.angle);
             }
         }
 
@@ -334,17 +330,17 @@ int main(void)
             vision_sync();
         }
         if (work_flag == 3)
-            vision_adjust_chassis(0, &points::TEST_STORAGE);
+            vision_adjust_chassis(vision_adjust_STORAGE, &points::TEST_STORAGE);
         if (work_flag == 4)
             process_place_task(0);
         if (work_flag == 5)
             materials_task(1);
         if (work_flag == 6)
             storage_place_task(0);
-        else if (work_flag == 7)
-        {
-          cool_rgb_dynamic(1, 1000);
-        }
+        if (work_flag == 7)
+            vision_adjust_chassis(vision_adjust_PLATE, &points::MATERIAL);
+        if (work_flag == 8)
+            chassis_rotate_move_tall(200, 200,90,positiontest);
 
         if (RC_flag == 1)
         {

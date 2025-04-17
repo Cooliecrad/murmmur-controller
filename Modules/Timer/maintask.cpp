@@ -10,28 +10,28 @@
 #include "driver_middle.h"
 #include "vision_adjust.h"
 #include "servor_ctl.h"
+#include "screen.h"
 /************宏定义**********************/
-const static uint16_t LINE_SPEED = 800;
-const static uint8_t LINE_ACC = 205;
+// static uint16_t LINE_SPEED = 500;
+// static uint8_t LINE_ACC = 200;
+static uint16_t LINE_SPEED = 1000;
+static uint8_t LINE_ACC = 180;
 /************物流搬运初赛场地上的点位**********************/
-
 namespace points
 {
-    const Point2f ZERO {0.075, 0};
-    const Point2f START {0.175, 0.175};
-    const Point2f START2 {0.25, 0.175};
-    const Point2f SCANQR {0.65,0.175};
-    const Point2f MATERIAL {1.51, 0.175};
-    const Point2f RIGHT_MID {1.1, 0.175};
-    const Pose2f TEMP_STORAGE {{1.1, 1.95}, 180};
-    const Pose2f TEST_STORAGE {{1.1, 1.95}, 0};
-    const Point2f LEFT_UP {1.92, 1.95};
-    const Pose2f PROCESS {{1.92, 1.13}, 90};
-    const Point2f RIGHT_UP {1.92, 0.175};
-    const Point2f MATERIAL2 {1.51, 0.18};
+     const Point2f START {0.175, 0.175};
+     const Point2f SCANQR {0.65,0.175};
+     const Pose2f MATERIAL {{1.51, 0.175}, 0};
+     const Point2f RIGHT_MID {1.1, 0.175};
+     const Pose2f PROCESS {{1.1, 1.95}, 180};
+     const Pose2f TEST_STORAGE {{1.1, 1.95}, 0};
+     const Point2f LEFT_UP {1.92, 1.95};
+     const Pose2f STORAGE {{1.92, 1.11}, 90};
+     const Point2f RIGHT_UP {1.92, 0.205}; // 为什么不平行？见上面的note
+     const Point2f MATERIAL2 {1.50, 0.20};
+     const Point2f START2 {0.25, 0.20};
+     const Point2f ZERO {0, 0.04};
 }
-
-
 
 /**
  * @brief 前往出库点位
@@ -63,6 +63,9 @@ void to_right_middle(void)
  */
 void To_Leftup(void)
 {
+#	ifdef __SAFE_MOVE_MODE
+        chassis_rotate_abs(LINE_ACC,LINE_SPEED,180);
+#	endif
     chassis_to(LINE_ACC, LINE_SPEED, points::LEFT_UP);
     chassis_rotate_abs(LINE_ACC, LINE_SPEED, 90);
 }
@@ -89,9 +92,10 @@ void To_Scan(void)
  */
 void to_materials(void)
 {
-    chassis_rotate_abs(LINE_ACC, LINE_SPEED, 0);
-    chassis_to(LINE_ACC, LINE_SPEED, points::MATERIAL);
-    chassis_rotate_abs(LINE_ACC, LINE_SPEED, 0);
+#   ifdef __SAFE_MOVE_MODE
+        chassis_rotate_abs(LINE_ACC, LINE_SPEED, 0);
+#   endif
+    chassis_to(LINE_ACC, LINE_SPEED, points::MATERIAL.xy);
 }
 
 /**
@@ -99,9 +103,11 @@ void to_materials(void)
  */
 void to_process(void)
 {
-    chassis_to(LINE_ACC, LINE_SPEED, points::TEMP_STORAGE.xy);
+    chassis_to(LINE_ACC, LINE_SPEED, points::PROCESS.xy);
     chassis_rotate_abs(LINE_ACC, LINE_SPEED, 180);
-    vision_adjust_chassis(0, &points::TEMP_STORAGE);
+#   ifdef __VISION_ADJUST_ENABLE
+        vision_adjust_chassis(vision_adjust_PROCESS, &points::PROCESS);
+#   endif
 }
 
 /**
@@ -109,9 +115,11 @@ void to_process(void)
  */
 void to_storage(void)
 {
-    chassis_to(LINE_ACC, LINE_SPEED, points::PROCESS.xy);
+    chassis_to(LINE_ACC, LINE_SPEED, points::STORAGE.xy);
     chassis_rotate_abs(LINE_ACC, LINE_SPEED, 90);
-    vision_adjust_chassis(1, &points::PROCESS);
+#   ifdef __VISION_ADJUST_ENABLE
+        vision_adjust_chassis(vision_adjust_STORAGE, &points::STORAGE);
+#   endif
 }
 
 void To_stop(void)
@@ -122,74 +130,88 @@ void To_stop(void)
 void to_materials_2(void)
 {
     chassis_to(100, 300, points::MATERIAL2);
-    Point2f new_dst = coordinate_transform_Z_rotate(points::MATERIAL, -90);
+    Point2f new_dst = coordinate_transform_Z_rotate(points::MATERIAL.xy, -90);
     CHASSIS.pos = new_dst;
     chassis_rotate_abs(LINE_ACC, LINE_SPEED, 0);
 }
 
+void scan_task()
+{
+#   ifdef __MATERIALS_TASK_ENABLE
+        vision_subscribe_order();
+        vision_sync();
+        vision_idle();
+        screen_show(vision_order_all());
+#   endif
+}
+
 void materials_task(uint8_t round)
 {
-    arm_item_detect();
-    clear_item();
 
-    /**
-     * @brief 如果只扫描一次，那么只有首个需要抬升到检测位置
-     */
-#   ifdef __MATERIALS_TASK_ONLY_SCAN_ONCE
-        const int start = 1;
-        color_t color = vision_order(round, 0);
-        uint8_t pos = vision_get_item(color); 
-        arm_Z_standby(); // 还要降到就绪位置
-        arm_action_get_materials(pos, color);
-#   else
-        const int start = 0; // 多次扫描，不需要额外工作
+#   ifdef __MATERIALS_TASK_ENABLE
+        arm_item_detect();
+        clear_item();
+#       ifdef __MATERIALS_TASK_ONLY_SCAN_ONCE_V2
+            if (round == 0) vision_item_detect_stop(); // 通知上位机检测结束
+#       else
+            vision_item_detect_stop();
+#       endif
+        HAL_Delay(20);
+        /**
+         * @brief 如果只扫描一次，那么只有首个需要抬升到检测位置
+         */
+#       ifdef __MATERIALS_TASK_ONLY_SCAN_ONCE
+            const int start = 1;
+            color_t color = vision_order(round, 0);
+            uint8_t pos = vision_get_item(color); 
+            arm_Z_standby(); // 还要降到就绪位置
+            arm_action_get_materials(pos, color);
+#       else
+            const int start = 0; // 多次扫描，不需要额外工作
+#       endif
+
+        for (int i = start; i < ITEM_COUNT; i++)
+        {
+            color_t color = vision_order(round, i);
+            uint8_t pos = vision_get_item(color);
+            arm_action_get_materials(pos, color);
+        }
+
+        arm_standby(); // 翅膀关闭
 #   endif
-
-    for (int i = start; i < ITEM_COUNT; i++)
-    {
-        color_t color = vision_order(round, i);
-        uint8_t pos = vision_get_item(color); 
-        arm_action_get_materials(pos, color);
-    }
-
-#   ifdef __MATERIALS_TASK_ONLY_SCAN_ONCE_V2
-        if (round == 1) vision_item_detect_stop(); // 通知上位机检测结束
-#   else
-        vision_item_detect_stop(); // 通知上位机检测结束
-#   endif
-
-    vision_idle();
-    arm_standby(); // 翅膀关闭
 }
 
 void process_place_task(uint8_t round)
 {
-    // 机械爪&翅膀打开, 调整位置，扫描
-    // claw_ctl(false, true);
-    // arm_ring_detect();
-    arm_item_detect();
-    vision_subscribe_rings();
+#   ifdef  __MATERIALS_TASK_ENABLE
+        // 机械爪&翅膀打开, 调整位置，扫描
+        // claw_ctl(false, true);
+        // arm_ring_detect();
+        arm_item_detect();
+        vision_subscribe_rings();
 
-    // 放物块，拿物块
-    arm_Z_standby();
-    for (int i = 0; i < 3; i++)
-    {
-        color_t color = vision_order(round, i);
-        arm_action_store_to_ground(color);
-    }
-    for (int i = 0; i < 3; i++)
-    {
-        color_t color = vision_order(round, i);
-        arm_action_ground_to_store(color);
-    }
+        // 放物块，拿物块
+        arm_Z_standby();
+        for (int i = 0; i < 3; i++)
+        {
+            color_t color = vision_order(round, i);
+            arm_action_store_to_ground(color);
+        }
+        for (int i = 0; i < 3; i++)
+        {
+            color_t color = vision_order(round, i);
+            arm_action_ground_to_store(color);
+        }
 
-    // 关闭翅膀，恢复机械臂
-    wing_ctl(true, false);
-    arm_standby();
+        // 关闭翅膀，恢复机械臂
+        wing_ctl(true, false);
+        arm_standby();
+#   endif
 }
 
 void storage_place_task(uint8_t round)
 {
+#   ifdef __MATERIALS_TASK_ENABLE
     // 机械爪&翅膀打开, 调整位置，扫描
     // claw_ctl(false, true);
     arm_item_detect();
@@ -208,19 +230,19 @@ void storage_place_task(uint8_t round)
     // 关闭翅膀，恢复机械臂
     wing_ctl(true, false);
     arm_standby();
+#   endif
 }
 
 void task(void)
 {
+    screen_clear();
     ///************第一圈**********************/
     To_start();
     
     To_Scan();
     
-    
-    vision_subscribe_order();
-    vision_sync();
-    vision_idle();
+    // 扫码任务
+    scan_task();
 
     to_materials();
     
@@ -265,7 +287,7 @@ void task(void)
     
     to_right_up();
     
-    To_start2();
+    To_start();
 
     To_stop();
 }

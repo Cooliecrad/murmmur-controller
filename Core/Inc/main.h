@@ -64,6 +64,8 @@ void Error_Handler(void);
 #define LCD_CS_GPIO_Port GPIOC
 #define LCD_RS_Pin GPIO_PIN_5
 #define LCD_RS_GPIO_Port GPIOC
+#define BOOT1_Pin GPIO_PIN_13
+#define BOOT1_GPIO_Port GPIOD
 #define BOOT0_Pin GPIO_PIN_14
 #define BOOT0_GPIO_Port GPIOD
 #define Z_CLICK_Pin GPIO_PIN_6

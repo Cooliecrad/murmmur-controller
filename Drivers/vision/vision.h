@@ -4,6 +4,7 @@
 #include "common.h"
 #include "stm32h7xx_hal.h"
 #include <stddef.h>
+#include <stdbool.h>
 
 
 const static uint8_t ITEM_COUNT = 3; // 单圈搬运需要搬运的个数
@@ -34,6 +35,11 @@ void vision_init(UART_HandleTypeDef *pHUART);
  * @brief 请求视觉进入空闲状态，不要扫描以免在运动中传输错误信息
  */
 void vision_idle();
+
+/**
+ * @brief 发送空闲状态包，并等待响应包
+ */
+bool vision_idle_wait(uint32_t timeout_ms);
  
 /**
  * @brief 到达检测位置，开始检测物品顺序
@@ -46,6 +52,11 @@ void vision_subscribe_order(void);
  * @param index 当前圈的第几个物品
  */
 color_t vision_order(uint8_t round, uint8_t index);
+
+/**
+ * @brief 返回物品顺序列表，一个六元组
+ */
+const color_t* vision_order_all();
 
 /**
  * @brief 向视觉订阅指定物品的信息
@@ -70,7 +81,7 @@ void vision_item_detect_stop();
  * @brief 返回当前的位置误差
  * @note 如果未提前调用vision_subscribe_pos()，可能会导致程序卡死、数据读取错误等问题
  */
-Point2f vision_get_pos(uint8_t pos);
+Point2f vision_get_pos(vision_adjust_t pos);
 
 /**
  * @brief 向视觉请求当前所有色环的信息
@@ -98,6 +109,11 @@ RC_data_t vision_get_RC();
  * @note 这个函数可以用来保证至少收到一帧所需数据包
  */
 void vision_sync();
+
+/**
+ * @brief 等待下位机收到指定类型的数据，阻塞指定时长
+ */
+bool vision_sync_wait(uint32_t timeout_ms);
 
 #ifdef __cplusplus
 }

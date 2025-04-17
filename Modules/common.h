@@ -25,6 +25,16 @@ typedef enum
 } color_t;
 
 /**
+ * @brief 视觉校准点位定义
+ */
+typedef enum
+{
+    vision_adjust_PROCESS,
+    vision_adjust_STORAGE,
+    vision_adjust_PLATE
+} vision_adjust_t;
+
+/**
  * @brief int16 二维坐标点
  */
 typedef struct

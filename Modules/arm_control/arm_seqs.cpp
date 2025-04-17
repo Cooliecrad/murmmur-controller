@@ -25,30 +25,30 @@ const float POSITION_X_RING_DETECT = 0;
 
 // 翅膀点位 ---------------------------------------------------------------------
 const float POSITION_R_WINGS[] = {
-    -67.8638687, // 右内
-    -74.1761703, // 右外
-    -296.44101, // 左内
-    -288.996674, // 左外
+    -67.3127899, // 右内
+    -73.9450226, // 右外
+    -296.06308, // 左内
+    -290.390625, // 左外
 };
 
 const float POSITION_X_WINGS[] = {
-    9.88867188,
-    91.6523438,
-    9.078125,
-    88.8828125,
+    8.43945313,
+    92.359375,
+    6.33789063,
+    89.6152344,
 };
 
 // 物料区夹取点位 ---------------------------------------------------------------
 const float POSITION_R_MATERIALS[] = {
-    -176.944916,   // 圆盘中下位置
-    -192.164063,   // 圆盘左上位置
-    -163.926559,   // 圆盘右上位置
+    -178.697464,   // 圆盘中下位置
+    -193.979889,   // 圆盘左上位置
+    -165.09726,   // 圆盘右上位置
 };
 
 const float POSITION_X_MATERIALS[] = {
-    48.6328125,
-    209.8125,	   // 圆盘左上
-    212.994141,	   // 圆盘右上
+    42.3417969,
+    205.232422,	   // 圆盘左上
+    205.142578,	   // 圆盘右上
 };
 
 const float STEPMOTOR_R_POSITIONS[] = {
@@ -80,13 +80,13 @@ const float STEPMOTOR_Z_POSITIONS[] = {
     -205, // 夹爪到地面高度
     -120,
     -105,	//码垛高度
-    -88, // 放到存储机构的位置
+    -92.6025391, // 放到存储机构的位置
     -16
 };
 
 
 // 新加
-Point2f armposition = {.x = -209, .y = -11};
+Point2f VISION_ATTR = {.x = -190, .y = -9};
 Point2f CLAW_ATTR = {.x = 145, .y = 5};
 
 namespace
@@ -142,7 +142,7 @@ void arm_ground_place(const Point3f *point)
 #	else
     float deg;
     Point2f pos = {.x = point->x, .y = point->y};
-    pos = coordinate_transform_XY_shift(pos, armposition); // 变换到夹爪坐标系
+    pos = coordinate_transform_XY_shift(pos, VISION_ATTR); // 变换到夹爪坐标系
 
     // R -> 前伸距离
     float R = sqrtf(powf(pos.x, 2) + powf(pos.y, 2));

@@ -77,6 +77,14 @@ void chassis_rotate(uint8_t acc, uint16_t speed, float angle);
  */
 void chassis_rotate_abs(uint8_t acc, uint16_t speed, float angle);
 
+/**
+ * @brief 边转边平移
+ * @param position 目标世界坐标系点位
+ * @param angle 指定的方位角
+ */
+void chassis_rotate_move_tall(uint8_t acc, uint16_t speed, float angle, Point2f position);
+
+
 #ifdef __cplusplus
 }
 #endif

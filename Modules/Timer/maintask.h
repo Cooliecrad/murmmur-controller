@@ -9,15 +9,17 @@ namespace points
     extern const Point2f START;
     extern const Point2f START2;
     extern const Point2f SCANQR;
-    extern const Point2f MATERIAL;
+    extern const Pose2f MATERIAL;
     extern const Point2f RIGHT_MID;
-    extern const Pose2f TEMP_STORAGE;
+    extern const Pose2f PROCESS;
     extern const Pose2f TEST_STORAGE;
     extern const Point2f LEFT_UP;
-    extern const Pose2f PROCESS;
+    extern const Pose2f STORAGE;
     extern const Point2f RIGHT_UP;
     extern const Point2f MATERIAL2;
 }
+
+void task_init();
 
 /**
  * @brief 取物料任务

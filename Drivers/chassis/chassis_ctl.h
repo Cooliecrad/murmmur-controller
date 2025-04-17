@@ -18,7 +18,7 @@ const static int CHASSIS_ADDR_SHIFT = 1; // 电机地址开始地址
 typedef struct
 {
 	float wheel_diameter;
-    float wheel_r;
+    float pitch_a_b_sum; // a + b
 } chassis_def_t;
 
 /**

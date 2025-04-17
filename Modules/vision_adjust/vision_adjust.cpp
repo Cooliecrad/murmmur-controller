@@ -7,15 +7,16 @@
 
 namespace
 {
-    const float POS_THRESHOLD = 0.01;
+    const float POS_THRESHOLD = 0.005;
     const float POS_RATE = 1;
     const uint16_t SPEED = 500;
     const uint16_t ACC = 220;
 }
 
 Pose2f speed;
-void vision_adjust_chassis(uint8_t pos, const Pose2f *target)
+void vision_adjust_chassis(vision_adjust_t pos, const Pose2f *target)
 {
+    chassis_rotate_abs(ACC, SPEED, target->angle);
     arm_item_detect();
 
     // 等待获取视觉数据

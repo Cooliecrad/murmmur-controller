@@ -135,6 +135,9 @@ void vision_init(UART_HandleTypeDef *pHUART)
     vision_info.order[3] = color_blue;
     vision_info.order[4] = color_green;
     vision_info.order[5] = color_red;
+
+    // 等待视觉响应
+    while (!vision_idle_wait(1000)) {}
 }
 
 /**
@@ -169,6 +172,12 @@ void vision_idle()
     __vision_subscribe(TX_BUFFER, sizeof(ps_comm_idle_req_t));
 }
 
+bool vision_idle_wait(uint32_t timeout_ms)
+{
+    vision_idle();
+    return vision_sync_wait(timeout_ms);
+}
+
 void vision_subscribe_order(void)
 {
     TX_BUFFER[1] = (uint8_t)ps_comm_type_SCAN_QR_REQ;
@@ -178,6 +187,11 @@ void vision_subscribe_order(void)
 color_t vision_order(uint8_t round, uint8_t index)
 {
     return vision_info.order[round * ITEM_COUNT + index];
+}
+
+const color_t* vision_order_all()
+{
+    return vision_info.order;
 }
 
 void vision_subscribe_item(color_t color)
@@ -201,7 +215,7 @@ void vision_item_detect_stop()
     vision_subscribe_item(color_none);
 }
 
-Point2f vision_get_pos(uint8_t pos)
+Point2f vision_get_pos(vision_adjust_t pos)
 {
     // 发送请求
     auto bf = (ps_comm_pos_detect_req_t*)TX_BUFFER;
@@ -246,4 +260,18 @@ void vision_sync()
 {
     while (!vision_info.instance.updated) HAL_Delay(VISION_POLL_INTERVAL);
     vision_info.instance.updated = false; // 当调用过这个函数后，认为没有新数据了
+}
+
+bool vision_sync_wait(uint32_t timeout_ms)
+{
+    while (timeout_ms > 0 && !vision_info.instance.updated)
+    {
+        timeout_ms = timeout_ms > VISION_POLL_INTERVAL
+                   ? timeout_ms - VISION_POLL_INTERVAL
+                   : 0;
+        HAL_Delay(VISION_POLL_INTERVAL);
+    }
+    bool ret = vision_info.instance.updated;
+    vision_info.instance.updated = false;
+    return ret;
 }

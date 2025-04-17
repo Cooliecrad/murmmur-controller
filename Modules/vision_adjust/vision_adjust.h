@@ -16,7 +16,7 @@ extern "C" {
  * @brief 根据当前视觉信息校准位姿
  * @param target 视觉校正的目标位置
  */
-void vision_adjust_chassis(uint8_t index, const Pose2f *target);
+void vision_adjust_chassis(vision_adjust_t index, const Pose2f *target);
 
 #ifdef __cplusplus
 }
