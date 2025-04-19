@@ -136,8 +136,13 @@ void vision_init(UART_HandleTypeDef *pHUART)
     vision_info.order[4] = color_green;
     vision_info.order[5] = color_red;
 
+    // 默认点位，用于调试
+    vision_info.storage_points[0] = Point2f {.x = 0, .y= -150};
+    vision_info.storage_points[1] = Point2f {.x = 0, .y= 0};
+    vision_info.storage_points[2] = Point2f {.x = 0, .y= 150};
+
     // 等待视觉响应
-    while (!vision_idle_wait(1000)) {}
+    // while (!vision_idle_wait(1000)) {}
 }
 
 /**
@@ -167,15 +172,21 @@ static inline void __vision_subscribe(uint8_t *frame, int length)
 
 void vision_idle()
 {
-    auto bf = (ps_comm_idle_req_t*)TX_BUFFER;
-    bf->addr = ps_comm_type_IDLE_REQ;
-    __vision_subscribe(TX_BUFFER, sizeof(ps_comm_idle_req_t));
+    vision_idle_pos(idle_inst_NONE);
 }
 
 bool vision_idle_wait(uint32_t timeout_ms)
 {
     vision_idle();
     return vision_sync_wait(timeout_ms);
+}
+
+void vision_idle_pos(idle_inst_t number)
+{
+    auto bf = (ps_comm_idle_req_t*)TX_BUFFER;
+    bf->addr = ps_comm_type_IDLE_REQ;
+    bf->number = number;
+    __vision_subscribe(TX_BUFFER, sizeof(ps_comm_idle_req_t));
 }
 
 void vision_subscribe_order(void)
@@ -226,10 +237,11 @@ Point2f vision_get_pos(vision_adjust_t pos)
     return vision_info.point2f;
 }
 
-void vision_subscribe_rings()
+void vision_subscribe_rings(uint8_t data)
 {
     auto bf = (ps_comm_ring_pos_req_t*)TX_BUFFER;
     bf->addr = ps_comm_type_RING_POS_REQ;
+    bf->data = data;
     __vision_subscribe(TX_BUFFER, sizeof(ps_comm_ring_pos_req_t));
     vision_sync();
     vision_idle();

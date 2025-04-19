@@ -18,7 +18,6 @@ const static float CHASSIS_PITCH_A = 0.11; // 底盘的短轴长度的一半
 const static float CHASSIS_PITCH_B = 0.12; // 底盘的长轴长度的一半
 const static float ROTATE_THRESHOLD = 0.5; // 可接受的角度误差
 
-#define Division 16
 chassis_t CHASSIS;
 
 /**
@@ -161,7 +160,7 @@ void chassis_rotate_abs(uint8_t acc, uint16_t speed, float angle)
     ch_angle = angle_normal(angle - HWT101_read_yaw());
     while (fabs(ch_angle) > ROTATE_THRESHOLD)
     {
-        chassis_rotate(200, 800, ch_angle);
+        chassis_rotate(acc, speed, ch_angle);
         HAL_Delay(100);
         ch_angle = angle_normal(angle - HWT101_read_yaw());
     }

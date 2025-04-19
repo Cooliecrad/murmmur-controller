@@ -45,9 +45,6 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-#define locationtime 200
-#define shorttime 4000
-#define angletime 1000
 int INIT = 0;
 bool INITALIZED = false;
 /* USER CODE END PTD */
@@ -111,7 +108,7 @@ void PeriphCommonClock_Config(void);
   * @retval int
   */
 int main(void)
-    {
+{
   /* USER CODE BEGIN 1 */
   /* USER CODE END 1 */
 
@@ -187,6 +184,8 @@ int main(void)
     
     // 使能机械臂，检查机械臂
     arm_zero_reset();
+    // 预热摄像头
+    vision_idle_pos(idle_inst_QR);
     work_flag = 1;
     while (1)
     {
@@ -341,6 +340,8 @@ int main(void)
             vision_adjust_chassis(vision_adjust_PLATE, &points::MATERIAL);
         if (work_flag == 8)
             chassis_rotate_move_tall(200, 200,90,positiontest);
+        if (work_flag == 9) // 固定三点(-150, 0, 150)测试
+            process_place_task(0xff);
 
         if (RC_flag == 1)
         {

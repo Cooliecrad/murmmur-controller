@@ -58,6 +58,7 @@ typedef struct
 {
     uint8_t header;
     ps_comm_type_t addr;
+    idle_inst_t number; // 注释数字，可以不填
     uint8_t checksum;
 } ps_comm_idle_req_t; 
 
@@ -115,6 +116,7 @@ typedef struct
 {
     uint8_t header;
     ps_comm_type_t addr;
+    uint8_t data;
     uint8_t checksum;
 } ps_comm_ring_pos_req_t;
 

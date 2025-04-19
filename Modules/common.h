@@ -35,6 +35,16 @@ typedef enum
 } vision_adjust_t;
 
 /**
+ * @brief 闲暇时上位机指令：在运动过程中，可以发送预热指令预热摄像头
+ */
+typedef enum
+{
+    idle_inst_NONE, // 没有任何指令
+    idle_inst_QR, // 预热扫码摄像头`
+    idle_inst_HUNG // 预热夹爪摄像头
+} idle_inst_t;
+
+/**
  * @brief int16 二维坐标点
  */
 typedef struct

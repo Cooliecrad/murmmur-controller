@@ -37,6 +37,11 @@ void vision_init(UART_HandleTypeDef *pHUART);
 void vision_idle();
 
 /**
+ * @brief 请求视觉进入空闲状态，附带额外的位置信息用来控制摄像头开关
+ */
+void vision_idle_pos(idle_inst_t number);
+
+/**
  * @brief 发送空闲状态包，并等待响应包
  */
 bool vision_idle_wait(uint32_t timeout_ms);
@@ -86,7 +91,7 @@ Point2f vision_get_pos(vision_adjust_t pos);
 /**
  * @brief 向视觉请求当前所有色环的信息
  */
-void vision_subscribe_rings();
+void vision_subscribe_rings(uint8_t data);
 
 /**
  * @brief 获取指定颜色的色环位置，按照上次调用vision_get_rings的结果返回

@@ -35,20 +35,20 @@ const float POSITION_X_WINGS[] = {
     8.43945313,
     92.359375,
     6.33789063,
-    89.6152344,
+    89.0488281,
 };
 
 // 物料区夹取点位 ---------------------------------------------------------------
 const float POSITION_R_MATERIALS[] = {
-    -178.697464,   // 圆盘中下位置
-    -193.979889,   // 圆盘左上位置
-    -165.09726,   // 圆盘右上位置
+    -173.684174,   // 圆盘中下位置
+    -190.441406,   // 圆盘左上位置
+    -160.927734,   // 圆盘右上位置
 };
 
 const float POSITION_X_MATERIALS[] = {
-    42.3417969,
-    205.232422,	   // 圆盘左上
-    205.142578,	   // 圆盘右上
+    33.5058594,
+    186.4375,	   // 圆盘左上
+    196.810547,	   // 圆盘右上
 };
 
 const float STEPMOTOR_R_POSITIONS[] = {
@@ -77,7 +77,7 @@ const float STEPMOTOR_X_POSITIONS[] = {
 const float STEPMOTOR_Z_POSITIONS[] = {
     POSITION_Z_STANDBY, // 最高位置
     -103.787842, // 圆盘夹取的高度
-    -205, // 夹爪到地面高度
+    -200, // 夹爪到地面高度
     -120,
     -105,	//码垛高度
     -92.6025391, // 放到存储机构的位置
@@ -86,8 +86,8 @@ const float STEPMOTOR_Z_POSITIONS[] = {
 
 
 // 新加
-Point2f VISION_ATTR = {.x = -190, .y = -9};
-Point2f CLAW_ATTR = {.x = 145, .y = 5};
+Point2f VISION_ATTR = {.x = -197, .y = -9};
+Point2f CLAW_ATTR = {.x = 147, .y = 6.5};
 
 namespace
 {
@@ -100,7 +100,7 @@ namespace
     /**
      * @brief 位置 -> 颜色映射
      */
-    color_t ITEM_POS_COLOR[STOARGE_COUNT] = {color_red, color_green, color_blue};
+    color_t ITEM_POS_COLOR[STOARGE_COUNT] = {color_red, color_red, color_blue};
 }
 
 void clear_item()
