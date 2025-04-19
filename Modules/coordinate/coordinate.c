@@ -88,3 +88,11 @@ float point_to_angle(Point2f point)
     } else
         return PI + atan_taylor(point.y/point.x);
 }
+
+
+float angle_normal(float angle)
+{
+    if (angle > 180) return angle - 360;
+    else if (angle < -180) return 360 + angle;
+    return angle;
+}

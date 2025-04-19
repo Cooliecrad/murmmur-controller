@@ -57,12 +57,7 @@ bool point2f_in_range(Point2f point, Point2f lower, Point2f upper);
  * @brief 从 [-360, 360] 转化到 [-180, 180]
  * @note 如果是(-∞, +∞)，使用angle_normal_large()
  */
-inline float angle_normal(float angle)
-{
-    if (angle > 180) return angle - 360;
-    else if (angle < -180) return 360 + angle;
-    return angle;
-}
+float angle_normal(float angle);
 
 /**
  * @brief 从 (-∞, +∞) 转化到 [-180, 180]

@@ -15,6 +15,12 @@ const static float ACC_X_SMOOTH = 245; // 放物块时X的加速度
 const float POSITION_R_STANDBY = 0;
 const float POSITION_X_STANDBY = 0;
 const float POSITION_Z_STANDBY = -30;
+// // 掀起盖子点位
+// const float POSITION_R_LEFT_LF = 0;
+// const float POSITION_R_RIGHT_LF = 0;
+// const float POSITION_X_LIFT_OFF = 0;
+// const float POSITION_Z_LIFT_OFF_SRC = 0;
+// const float POSITION_Z_LIFT_OFF_DST = 0;
 
 // 扫描点位
 const float POSITION_R_DETECT = -180;
@@ -87,7 +93,7 @@ const float STEPMOTOR_Z_POSITIONS[] = {
 
 // 新加
 Point2f VISION_ATTR = {.x = -197, .y = -9};
-Point2f CLAW_ATTR = {.x = 147, .y = 6.5};
+Point2f CLAW_ATTR = {.x = 97, .y = 6.5};
 
 namespace
 {
@@ -345,6 +351,33 @@ void arm_action_wing_test()
     }
     wing_ctl(true, false);
 }  
+
+void arm_action_lift_off(bool left_right)
+{
+    arm_Z_standby();
+    motor_r->move_to(POSITION_R_DETECT);
+    motor_x->move_to(POSITION_X_STANDBY);
+    arm_move_sync();
+    
+    // 左边
+    if (left_right == true)
+    {
+        motor_r->move_to(POSITION_R_LEFT_LF);
+    } else // 右边
+    {
+        motor_r->move_to(POSITION_R_RIGHT_LF);
+    }
+    motor_x->move_to(POSITION_X_LIFT_OFF);
+    motor_z->move_to(POSITION_Z_LIFT_OFF_SRC);
+    arm_move_sync();
+    motor_x->move_to(POSITION_Z_LIFT_OFF_DST);
+    arm_move_sync();
+
+    arm_Z_standby();
+    motor_r->move_to(POSITION_R_DETECT);
+    motor_x->move_to(POSITION_X_STANDBY);
+    arm_move_sync();
+}
 
 // 机械臂总控
 void Arm_Action(ArmAction action, ArmTarget color)

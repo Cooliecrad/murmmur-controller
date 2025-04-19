@@ -117,6 +117,12 @@ void arm_action_wing_test();
 
 uint16_t angle_to_position(float angle);
 
+/**
+ * @brief XZR就绪位置 -> 掀起盖子 -> XZR就绪位置
+ * @note left_right true:left, false:right
+ */
+void arm_action_lift_off(bool left_right);
+
 void Arm_Action(ArmAction action, ArmTarget color);
 
 #ifdef __cplusplus

@@ -15,8 +15,8 @@
 /************宏定义**********************/
 // static uint16_t LINE_SPEED = 500;
 // static uint8_t LINE_ACC = 200;
-static uint16_t LINE_SPEED = 1000;
-static uint8_t LINE_ACC = 180;
+static uint16_t LINE_SPEED = 500;
+static uint8_t LINE_ACC = 150;
 static uint16_t ROTATE_SPEED = 1000;
 static uint8_t ROTATE_ACC = 200;
 /************物流搬运初赛场地上的点位**********************/
@@ -45,15 +45,18 @@ namespace points
      const Pose2f MATERIAL {{1.51, 0.175}, 0};
      const Point2f RIGHT_MID {1.1, 0.175};
      const Pose2f PROCESS {{1.1, 1.95}, 180};
-     const Pose2f TEST_STORAGE {{1.1, 1.95}, 0};
+     const Pose2f TEST_STORAGE {{0, 0}, 0};
     //  const Point2f LEFT_UP {1.92, 1.95};
-     const Pose2f STORAGE {{0.28, 1.0625}, 90};
+     const Pose2f STORAGE {{0.15, 1.07}, 270};
     //  const Point2f MATERIAL2 {1.50, 0.20};
-     const Point2f START2 {0.25, 0.20};
+     const Point2f START2 {0.15, 0.11};
      const Point2f ZERO {0, 0.04};
 
-     const Point2f MIDDLE {1.1, 1.0625}; // 中部区
-     const Point2f LEFT_BOTTOM {0.28, 1.95}; // 左底部
+     const Point2f MIDDLE {1.1, 1.0625}; // 入：中部区
+     const Point2f PROCESS_OUT {1.16, 1.95}; // 出：处理区
+     const Point2f PROCESS2 {1.15, 1.95};
+     const Point2f MIDDLE_OUT {1.16, 1.03}; // 出：中部区
+     const Point2f LEFT_BOTTOM {0.15, 1.95}; // 左底部
      const Pose2f MID_BOTTOM {STORAGE};
 }
 
@@ -142,10 +145,12 @@ void to_process(uint8_t barricade)
         chassis_to(LINE_ACC, LINE_SPEED, points::MIDDLE); // 中部
         chassis_rotate_abs(ROTATE_ACC, ROTATE_SPEED, 180);
         chassis_to(LINE_ACC, LINE_SPEED, points::MID_BOTTOM.xy); // 中下区
-        chassis_rotate_abs(ROTATE_ACC, ROTATE_SPEED, 90);
+#   ifdef __VISION_ADJUST_ENABLE
+        vision_adjust_chassis(vision_adjust_STORAGE, &points::STORAGE);
+#   endif
         chassis_to(LINE_ACC, LINE_SPEED, points::LEFT_BOTTOM); // 左下区
         chassis_rotate_abs(ROTATE_ACC, ROTATE_SPEED, 180);
-        chassis_to(LINE_ACC, LINE_SPEED, points::PROCESS.xy); // 处理区
+        chassis_to(LINE_ACC, LINE_SPEED, points::PROCESS2); // 处理区
     }
 #   ifdef __VISION_ADJUST_ENABLE
         vision_adjust_chassis(vision_adjust_PROCESS, &points::PROCESS);
@@ -181,12 +186,33 @@ void To_stop(void)
     chassis_to(50, 200, points::ZERO);
 }
 
-void to_materials_2(void)
+void to_materials_2(uint8_t barricade)
 {
-    // chassis_to(100, 300, points::MATERIAL2);
-    Point2f new_dst = coordinate_transform_Z_rotate(points::MATERIAL.xy, -90);
-    CHASSIS.pos = new_dst;
-    chassis_rotate_abs(ROTATE_ACC, ROTATE_SPEED, 0);
+    if (barricade != 2)
+    {
+        chassis_to(LINE_ACC, LINE_SPEED, points::PROCESS_OUT);
+        chassis_rotate_abs(ROTATE_ACC, ROTATE_SPEED, 90);
+        chassis_to(LINE_ACC, LINE_SPEED, points::MIDDLE_OUT);
+
+        Point2f new_dst = coordinate_transform_Z_rotate(points::MIDDLE, -90);
+        CHASSIS.pos = new_dst;
+
+        chassis_to(LINE_ACC, LINE_SPEED, points::RIGHT_MID);
+        chassis_rotate_abs(ROTATE_ACC, ROTATE_SPEED, 0);
+        chassis_to(LINE_ACC, LINE_SPEED, points::MATERIAL.xy);
+    } else
+    {
+        chassis_to(LINE_ACC, LINE_SPEED, points::LEFT_BOTTOM);
+        chassis_rotate_abs(ROTATE_ACC, ROTATE_SPEED, 270);
+        chassis_to(LINE_ACC, LINE_SPEED, points::MID_BOTTOM.xy);
+        vision_adjust_chassis(vision_adjust_STORAGE, &points::MID_BOTTOM);
+        chassis_to(LINE_ACC, LINE_SPEED, points::START2);
+        chassis_rotate_abs(ROTATE_ACC, ROTATE_SPEED, 0);
+        // chassis_to(100, 300, points::MATERIAL2);
+        Point2f new_dst = coordinate_transform_Z_rotate(points::START, -90);
+        CHASSIS.pos = new_dst;
+        to_materials();
+    }
 }
 
 void scan_task()
@@ -232,8 +258,11 @@ void materials_task(uint8_t round)
         }
 
         arm_standby(); // 翅膀关闭
+#   else
+        HAL_Delay(1000);
 #   endif
     chassis_move(LINE_ACC*0.5, LINE_SPEED*0.5, Point2f {-0.02, 0});
+    chassis_rotate_abs(ROTATE_ACC, ROTATE_SPEED, 90);
 }
 
 void process_place_task(uint8_t round)
@@ -296,51 +325,35 @@ void task(void)
 {
     screen_clear();
     ///************第一圈**********************/
-    To_start();
+    To_start(); // 出库
     
-    To_Scan();
+    To_Scan(); // 扫码点位
     
-    // 扫码任务
-    scan_task();
+    scan_task(); // 扫码任务
 
-    to_materials();
+    to_materials(); // 物料夹取点位
 
-    //执行 圆盘——》储存
-    materials_task(0);
+    materials_task(0); // 物料第一轮 
 
     to_right_middle();
 
     to_process(vision_order(0, 0));
     
-    //执行 储存——》圆环——》储存
     process_place_task(0);
 
-    to_storage(vision_order(0, 0));
-    
-    //执行 存储——》圆环
-    storage_place_task(0);
-    
-    To_start2();
-    // to_right_up();
-    
-    ///************第二圈**********************/
+    to_materials_2(vision_order(0, 0));
 
-    //执行 圆盘——》存储
-    // to_materials_2();
-    to_materials();
     materials_task(1);
-    chassis_rotate_abs(ROTATE_ACC, ROTATE_SPEED, 0);
 
     to_right_middle();
 
-    to_process(vision_order(0, 0));
-    
+    to_process(vision_order(0, 0)); // 第二轮储存
+
     process_place_task(1);
 
     to_storage(vision_order(0, 0));
     
-    //执行 码垛
-    storage_place_task(1);
+    storage_place_task(0);
     
     To_start2();
 
