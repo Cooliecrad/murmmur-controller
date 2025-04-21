@@ -15,7 +15,7 @@
 /************宏定义**********************/
 // static uint16_t LINE_SPEED = 500;
 // static uint8_t LINE_ACC = 200;
-static uint16_t LINE_SPEED = 500;
+static uint16_t LINE_SPEED = 400;
 static uint8_t LINE_ACC = 150;
 static uint16_t ROTATE_SPEED = 1000;
 static uint8_t ROTATE_ACC = 200;
@@ -43,7 +43,7 @@ namespace points
      const Point2f START {0.175, 0.175};
      const Point2f SCANQR {0.65,0.175};
      const Pose2f MATERIAL {{1.51, 0.175}, 0};
-     const Point2f RIGHT_MID {1.1, 0.175};
+     const Point2f RIGHT_MID {1.06, 0.175};
      const Pose2f PROCESS {{1.1, 1.95}, 180};
      const Pose2f TEST_STORAGE {{0, 0}, 0};
     //  const Point2f LEFT_UP {1.92, 1.95};
@@ -170,11 +170,13 @@ void to_storage(uint8_t barricade)
         chassis_to(LINE_ACC, LINE_SPEED, points::STORAGE.xy);
     } else
     {
-        chassis_rotate(ROTATE_ACC, ROTATE_SPEED, 270);
-        chassis_to(LINE_ACC, LINE_SPEED, points::MIDDLE);
-        chassis_rotate(ROTATE_ACC, ROTATE_SPEED, 180);
+        chassis_rotate_abs(ROTATE_ACC, ROTATE_SPEED, 180);
+        chassis_to(LINE_ACC, LINE_SPEED, points::PROCESS_OUT);
+        chassis_rotate_abs(ROTATE_ACC, ROTATE_SPEED, 90);
+        chassis_to(LINE_ACC, LINE_SPEED, points::MIDDLE_OUT);
+        chassis_rotate_abs(ROTATE_ACC, ROTATE_SPEED, 180);
         chassis_to(LINE_ACC, LINE_SPEED, points::STORAGE.xy);
-        chassis_rotate(ROTATE_ACC, ROTATE_SPEED, 270);
+        chassis_rotate_abs(ROTATE_ACC, ROTATE_SPEED, 270);
     }
 #   ifdef __VISION_ADJUST_ENABLE
         vision_adjust_chassis(vision_adjust_STORAGE, &points::STORAGE);
@@ -341,15 +343,15 @@ void task(void)
     
     process_place_task(0);
 
-    to_materials_2(vision_order(0, 0));
+    // to_materials_2(vision_order(0, 0));
 
-    materials_task(1);
+    // materials_task(1);
 
-    to_right_middle();
+    // to_right_middle();
 
-    to_process(vision_order(0, 0)); // 第二轮储存
+    // to_process(vision_order(0, 0)); // 第二轮储存
 
-    process_place_task(1);
+    // process_place_task(1);
 
     to_storage(vision_order(0, 0));
     

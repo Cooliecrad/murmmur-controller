@@ -46,15 +46,15 @@ const float POSITION_X_WINGS[] = {
 
 // 物料区夹取点位 ---------------------------------------------------------------
 const float POSITION_R_MATERIALS[] = {
-    -173.684174,   // 圆盘中下位置
-    -190.441406,   // 圆盘左上位置
-    -160.927734,   // 圆盘右上位置
+    -187.533112,   // 圆盘中下位置
+    -160.927734,   // 圆盘左上位置
+    -169.105957,   // 圆盘右上位置
 };
 
 const float POSITION_X_MATERIALS[] = {
-    33.5058594,
-    186.4375,	   // 圆盘左上
-    196.810547,	   // 圆盘右上
+    26.4375,
+    192.564453,	   // 圆盘左上
+    183.085938,	   // 圆盘右上
 };
 
 const float STEPMOTOR_R_POSITIONS[] = {
@@ -93,7 +93,7 @@ const float STEPMOTOR_Z_POSITIONS[] = {
 
 // 新加
 Point2f VISION_ATTR = {.x = -197, .y = -9};
-Point2f CLAW_ATTR = {.x = 97, .y = 6.5};
+Point2f CLAW_ATTR = {.x = 147, .y = 6.5};
 
 namespace
 {
@@ -352,32 +352,32 @@ void arm_action_wing_test()
     wing_ctl(true, false);
 }  
 
-void arm_action_lift_off(bool left_right)
-{
-    arm_Z_standby();
-    motor_r->move_to(POSITION_R_DETECT);
-    motor_x->move_to(POSITION_X_STANDBY);
-    arm_move_sync();
-    
-    // 左边
-    if (left_right == true)
-    {
-        motor_r->move_to(POSITION_R_LEFT_LF);
-    } else // 右边
-    {
-        motor_r->move_to(POSITION_R_RIGHT_LF);
-    }
-    motor_x->move_to(POSITION_X_LIFT_OFF);
-    motor_z->move_to(POSITION_Z_LIFT_OFF_SRC);
-    arm_move_sync();
-    motor_x->move_to(POSITION_Z_LIFT_OFF_DST);
-    arm_move_sync();
+//void arm_action_lift_off(bool left_right)
+//{
+//    arm_Z_standby();
+//    motor_r->move_to(POSITION_R_DETECT);
+//    motor_x->move_to(POSITION_X_STANDBY);
+//    arm_move_sync();
+//    
+//    // 左边
+//    if (left_right == true)
+//    {
+//        motor_r->move_to(POSITION_R_LEFT_LF);
+//    } else // 右边
+//    {
+//        motor_r->move_to(POSITION_R_RIGHT_LF);
+//    }
+//    motor_x->move_to(POSITION_X_LIFT_OFF);
+//    motor_z->move_to(POSITION_Z_LIFT_OFF_SRC);
+//    arm_move_sync();
+//    motor_x->move_to(POSITION_Z_LIFT_OFF_DST);
+//    arm_move_sync();
 
-    arm_Z_standby();
-    motor_r->move_to(POSITION_R_DETECT);
-    motor_x->move_to(POSITION_X_STANDBY);
-    arm_move_sync();
-}
+//    arm_Z_standby();
+//    motor_r->move_to(POSITION_R_DETECT);
+//    motor_x->move_to(POSITION_X_STANDBY);
+//    arm_move_sync();
+//}
 
 // 机械臂总控
 void Arm_Action(ArmAction action, ArmTarget color)

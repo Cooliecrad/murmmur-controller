@@ -14,7 +14,7 @@ typedef struct
 // 爪子——4
 float CLAW_ANGLE[] = {
     90.0f, // 一般状态
-    17.0f,  // 关
+    30.f// 关
 };
 servor_t CLAW_SERVOR = {.Num = 0, .Time = 300, .angle = CLAW_ANGLE};
 

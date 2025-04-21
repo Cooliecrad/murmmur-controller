@@ -106,17 +106,20 @@ void arm_ctl_init(UART_HandleTypeDef *pHUART)
     // 设定R电机
     motor_r = new motor::Stepmotor {*arm_emm42_handle,
                                     1, 1. / 360. * 100. / 16. * 3200};
-    motor_r->default_acc = 248;
+    motor_r->default_acc = 240;
+    // motor_z->default_acc = 248;
     motor_r->default_speed = 2100;
     motor_r->set_protect(-360, 360);
     // 设定X电机
     motor_x = new motor::Stepmotor {*arm_emm42_handle, 3, 50};
-    motor_x->default_acc = 254;
+    motor_x->default_acc = 252;
+    // motor_z->default_acc = 254;
     motor_x->default_speed = 2300;
     motor_x->set_protect(0, 300);
     // 设定Z电机
     motor_z = new motor::Stepmotor {*arm_emm42_handle, 2, 80};
-    motor_z->default_acc = 254;
+    motor_z->default_acc = 252;
+    // motor_z->default_acc = 254;
     motor_z->default_speed = 2300;
     motor_z->set_protect(-220, 0);
     // 设定电机数组
